@@ -95,6 +95,31 @@ it('unlink forgets the cache and best-effort deletes the link', function () {
     expect(Cache::get('gezel:stagent:telegram-status:gezel-1'))->toBeNull();
 });
 
+it('markLinked keeps a bot_username it already knows', function () {
+    Http::fake();
+
+    Cache::put('gezel:stagent:telegram-status:gezel-1', ['connected' => false, 'bot_username' => 'bot'], now()->addDay());
+
+    (new TelegramLinkClient)->markLinked('gezel-1');
+
+    expect(Cache::get('gezel:stagent:telegram-status:gezel-1'))->toBe(['connected' => true, 'bot_username' => 'bot']);
+    Http::assertNothingSent();
+});
+
+it('status falls back to disconnected when the middleware cannot say', function () {
+    Http::fake(fn () => throw new ConnectionException('unreachable'));
+
+    expect((new TelegramLinkClient)->status('gezel-1'))->toBe(['connected' => false, 'bot_username' => null]);
+});
+
+it('url-encodes the gezel id in link paths', function () {
+    Http::fake(['middleware.test/*' => Http::response(['connected' => true], 200)]);
+
+    (new TelegramLinkClient)->status('gezel/../evil');
+
+    Http::assertSent(fn ($request) => $request->url() === 'http://middleware.test/v1/connectors/telegram/links/gezel%2F..%2Fevil');
+});
+
 it('markLinked caches connected=true without calling the middleware', function () {
     Http::fake();
 
