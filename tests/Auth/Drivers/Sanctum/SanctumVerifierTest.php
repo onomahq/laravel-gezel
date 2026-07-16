@@ -13,12 +13,12 @@ beforeEach(function () {
         $this->markTestSkipped('requires laravel/sanctum');
     }
 
-    migrateGezelOwnerTable(SanctumOwner::class, 'sanctum_owners');
+    migrateGezelOwnerTable(SanctumOwner::class);
     migratePersonalAccessTokensTable();
 });
 
 afterEach(function () {
-    Schema::dropIfExists('sanctum_owners');
+    Schema::dropIfExists('users');
     Schema::dropIfExists('personal_access_tokens');
 });
 

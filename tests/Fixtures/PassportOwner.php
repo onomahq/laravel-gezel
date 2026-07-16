@@ -12,7 +12,7 @@ class PassportOwner extends Authenticatable implements OAuthenticatable
     use HasApiTokens;
     use HasGezelAgent;
 
-    protected $table = 'passport_owners';
+    protected $table = 'users';
 
     protected $guarded = [];
 }

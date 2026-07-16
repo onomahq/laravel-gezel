@@ -11,7 +11,7 @@ class SanctumOwner extends Authenticatable
     use HasApiTokens;
     use HasGezelAgent;
 
-    protected $table = 'sanctum_owners';
+    protected $table = 'users';
 
     protected $guarded = [];
 }

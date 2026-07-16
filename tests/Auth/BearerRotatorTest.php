@@ -8,12 +8,12 @@ use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Tests\Fixtures\SanctumOwner;
 
 beforeEach(function () {
-    migrateGezelOwnerTable(SanctumOwner::class, 'sanctum_owners');
+    migrateGezelOwnerTable(SanctumOwner::class);
     migratePersonalAccessTokensTable();
 });
 
 afterEach(function () {
-    Schema::dropIfExists('sanctum_owners');
+    Schema::dropIfExists('users');
     Schema::dropIfExists('personal_access_tokens');
 });
 

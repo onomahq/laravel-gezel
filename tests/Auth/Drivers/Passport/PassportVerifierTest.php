@@ -14,7 +14,7 @@ beforeEach(function () {
         $this->markTestSkipped('requires laravel/passport');
     }
 
-    migrateGezelOwnerTable(PassportOwner::class, 'passport_owners');
+    migrateGezelOwnerTable(PassportOwner::class);
     migratePassportTables('gezel_passport_owners');
 
     config()->set('auth.guards.api', ['driver' => 'passport', 'provider' => 'gezel_passport_owners']);
@@ -22,7 +22,7 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    Schema::dropIfExists('passport_owners');
+    Schema::dropIfExists('users');
     Schema::dropIfExists('oauth_access_tokens');
     Schema::dropIfExists('oauth_refresh_tokens');
     Schema::dropIfExists('oauth_auth_codes');
