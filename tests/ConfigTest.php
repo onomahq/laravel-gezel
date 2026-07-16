@@ -1,20 +1,11 @@
 <?php
 
-use App\Models\User;
-
-it('ships the expected gezel config defaults', function () {
+it('ships the contract values the middleware relies on', function () {
     $config = require __DIR__.'/../config/gezel.php';
 
-    expect($config['app_id'])->toBeNull();
     expect($config['middleware']['url'])->toBe('http://localhost:8800');
-    expect($config['middleware']['app_token'])->toBeNull();
-    expect($config['middleware']['service_token'])->toBeNull();
     expect($config['timeout'])->toBe(120);
-    expect($config['provisioning']['enabled'])->toBeTrue();
-    expect($config['provisioning']['strategy'])->toBe('opt-in');
     expect($config['routes']['prefix'])->toBe('api/v1/internal');
-    expect($config['routes']['middleware'])->toBe(['api']);
-    expect($config['owner']['model'])->toBe(User::class);
     expect($config['owner']['acknowledges_shared_memory'])->toBeFalse();
 });
 

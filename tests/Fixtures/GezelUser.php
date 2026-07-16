@@ -9,7 +9,7 @@ class GezelUser extends Authenticatable
 {
     use HasGezelAgent;
 
-    protected $table = 'gezel_users';
+    protected $table = 'users';
 
     protected $guarded = [];
 }

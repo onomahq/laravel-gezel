@@ -9,7 +9,6 @@ use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
-use Onomahq\Gezel\Support\Owner;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -20,7 +19,6 @@ class GezelServiceProvider extends PackageServiceProvider
         $package
             ->name('laravel-gezel')
             ->hasConfigFile()
-            ->hasViews()
             ->hasMigration('add_gezel_columns');
     }
 
@@ -36,11 +34,6 @@ class GezelServiceProvider extends PackageServiceProvider
             // itself and this provider leaves both untouched.
             default => null,
         };
-    }
-
-    public function packageBooted(): void
-    {
-        Owner::guardSharedMemoryAcknowledgement();
     }
 
     private function bindSanctumAuth(): void

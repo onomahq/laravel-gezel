@@ -2,8 +2,8 @@
 
 namespace Onomahq\Gezel\Support;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use RuntimeException;
 
 class Owner
@@ -16,6 +16,8 @@ class Owner
         /** @var class-string<Model> $model */
         $model = config('gezel.owner.model');
 
+        static::guard($model);
+
         return $model;
     }
 
@@ -24,11 +26,13 @@ class Owner
         return static::model()::query()->where('gezel_id', $gezelId)->first();
     }
 
-    public static function guardSharedMemoryAcknowledgement(): void
+    protected static function guard(string $model): void
     {
-        $model = static::model();
+        if (! class_exists($model)) {
+            throw new RuntimeException("gezel.owner.model [{$model}] does not exist.");
+        }
 
-        if (is_subclass_of($model, Authenticatable::class)) {
+        if (is_a($model, Authenticatable::class, true)) {
             return;
         }
 
@@ -36,8 +40,6 @@ class Owner
             return;
         }
 
-        throw new RuntimeException(
-            "gezel.owner.model [{$model}] is not an Illuminate\\Foundation\\Auth\\User subclass. A non-User owner means one Gezel container and one shared agent memory across every member of that model — a deliberate product decision, not a default. Set gezel.owner.acknowledges_shared_memory = true in config/gezel.php to confirm you intend this."
-        );
+        throw new RuntimeException("gezel.owner.model [{$model}] cannot authenticate, so every member of it would share one container and one agent memory; set gezel.owner.acknowledges_shared_memory = true in config/gezel.php to confirm you intend this.");
     }
 }
