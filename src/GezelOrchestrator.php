@@ -2,6 +2,7 @@
 
 namespace Onomahq\Gezel;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -12,7 +13,7 @@ class GezelOrchestrator
 {
     public function provision(string $gezelId, string $containerToken): ContainerInfo
     {
-        $response = $this->middleware()->post("/v1/containers/{$gezelId}/provision", [
+        $response = $this->middleware()->post($this->containerPath($gezelId).'/provision', [
             'container_token' => $containerToken,
         ]);
 
@@ -26,48 +27,46 @@ class GezelOrchestrator
      */
     public function recreate(string $gezelId, string $containerToken): ContainerInfo
     {
-        $response = $this->middleware()->post("/v1/containers/{$gezelId}/recreate", [
+        $response = $this->middleware()->post($this->containerPath($gezelId).'/recreate', [
             'container_token' => $containerToken,
         ]);
 
         return $this->containerInfoFrom($response, $gezelId, 'recreate');
     }
 
-    public function deprovision(string $gezelId): bool
+    public function deprovision(string $gezelId): void
     {
-        $response = $this->middleware()->delete("/v1/containers/{$gezelId}");
+        $response = $this->middleware()->delete($this->containerPath($gezelId));
 
         $this->guardLifecycleDisabled($response, $gezelId);
 
-        if ($response->failed()) {
-            throw new RuntimeException("Failed to deprovision Gezel container for {$gezelId}");
-        }
-
-        return true;
+        $response->throw();
     }
 
-    public function restart(string $gezelId): bool
+    public function restart(string $gezelId): void
     {
-        $response = $this->middleware()->post("/v1/containers/{$gezelId}/restart");
+        $response = $this->middleware()->post($this->containerPath($gezelId).'/restart');
 
         $this->guardLifecycleDisabled($response, $gezelId);
 
-        return $response->successful();
+        $response->throw();
     }
 
     public function healthCheck(string $gezelId): HealthStatus
     {
         try {
-            $response = $this->middleware()->get("/v1/containers/{$gezelId}/health");
-
-            if ($response->successful()) {
-                return HealthStatus::healthy($response->json('uptime_seconds'));
-            }
-
-            return HealthStatus::unhealthy("Health check returned {$response->status()}");
-        } catch (\Throwable $e) {
+            $response = $this->middleware()->get($this->containerPath($gezelId).'/health');
+        } catch (ConnectionException $e) {
             return HealthStatus::unhealthy($e->getMessage());
         }
+
+        if (! $response->successful()) {
+            return HealthStatus::unhealthy("Health check returned {$response->status()}");
+        }
+
+        $uptime = $response->json('uptime_seconds');
+
+        return HealthStatus::healthy(is_numeric($uptime) ? (int) $uptime : null);
     }
 
     /**
@@ -75,43 +74,44 @@ class GezelOrchestrator
      */
     public function writeConfig(string $gezelId, array $config, int $version = 1): void
     {
-        $response = $this->middleware()->post("/v1/containers/{$gezelId}/config", [
+        $response = $this->middleware()->post($this->containerPath($gezelId).'/config', [
             'version' => $version,
             'payload' => $config,
         ]);
 
         $this->guardLifecycleDisabled($response, $gezelId);
 
-        if ($response->failed()) {
-            throw new RuntimeException("Failed to write config for {$gezelId}");
-        }
+        $response->throw();
     }
 
     protected function containerInfoFrom(Response $response, string $gezelId, string $action): ContainerInfo
     {
         $this->guardLifecycleDisabled($response, $gezelId);
 
-        if ($response->failed()) {
-            throw new RuntimeException("Failed to {$action} Gezel container for {$gezelId}");
-        }
+        $response->throw();
 
         $containerId = $response->json('container_id');
 
         if (! is_string($containerId) || $containerId === '') {
-            throw new RuntimeException("Failed to {$action} Gezel container for {$gezelId}");
+            throw new RuntimeException("Gezel {$action} for {$gezelId} succeeded but returned no container_id.");
         }
 
         return new ContainerInfo(
             containerId: $containerId,
-            status: $response->json('status', 'provisioned'),
+            status: (string) $response->json('status', 'provisioned'),
         );
     }
 
     protected function guardLifecycleDisabled(Response $response, string $gezelId): void
     {
         if ($response->status() === 501) {
-            throw new ContainerLifecycleDisabledException("Container lifecycle disabled for {$gezelId}");
+            throw new ContainerLifecycleDisabledException("Container lifecycle disabled for {$gezelId}.");
         }
+    }
+
+    protected function containerPath(string $gezelId): string
+    {
+        return '/v1/containers/'.rawurlencode($gezelId);
     }
 
     protected function middleware(): PendingRequest

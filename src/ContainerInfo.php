@@ -2,7 +2,7 @@
 
 namespace Onomahq\Gezel;
 
-class ContainerInfo
+final class ContainerInfo
 {
     public function __construct(
         public readonly string $containerId,
