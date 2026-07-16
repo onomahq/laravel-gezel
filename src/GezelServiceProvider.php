@@ -11,6 +11,7 @@ use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
+use Onomahq\Gezel\Contracts\StreamsGezelChat;
 use RuntimeException;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -27,6 +28,8 @@ class GezelServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
+        $this->app->bind(StreamsGezelChat::class, GezelStreamClient::class);
+
         $this->app->singleton(PrincipalGate::class);
 
         match ($driver = config('gezel.auth.driver', 'sanctum')) {
