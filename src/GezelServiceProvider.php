@@ -2,7 +2,6 @@
 
 namespace Onomahq\Gezel;
 
-use Onomahq\Gezel\Commands\GezelCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
