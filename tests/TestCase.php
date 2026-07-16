@@ -3,8 +3,9 @@
 namespace Onomahq\Gezel\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Orchestra\Testbench\TestCase as Orchestra;
 use Onomahq\Gezel\GezelServiceProvider;
+use Onomahq\Gezel\Tests\Fixtures\GezelUser;
+use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {
@@ -28,10 +29,11 @@ class TestCase extends Orchestra
     {
         config()->set('database.default', 'testing');
 
-        /*
-         foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/../database/migrations') as $migration) {
-            (include $migration->getRealPath())->up();
-         }
-         */
+        // Default owner.model to a real, Authenticatable fixture so the
+        // package boots cleanly; tests override gezel.owner.* as needed.
+        config()->set('gezel.owner', [
+            'model' => GezelUser::class,
+            'acknowledges_shared_memory' => false,
+        ]);
     }
 }
