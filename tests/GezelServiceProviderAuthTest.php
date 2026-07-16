@@ -60,7 +60,7 @@ it('throws a clear exception naming the bad value for an unresolvable custom dri
         ->toThrow(RuntimeException::class, 'not-a-real-class');
 });
 
-it('binds sanctum/passport lazily — registering never resolves the driver', function () {
+it('binds sanctum/passport lazily, so registering never resolves the driver', function () {
     // A missing laravel/sanctum install must only fail the request that
     // actually resolves a driver, never every artisan command booting the
     // framework. Asserting resolved() stays false is the only way to prove

@@ -38,7 +38,7 @@ class GezelServiceProvider extends PackageServiceProvider
 
     /**
      * Binds behind closures, not an eager check, so a missing laravel/sanctum
-     * install only fails the request that actually resolves one of these —
+     * install only fails the request that actually resolves one of these,
      * never every artisan command booting the framework, including the one
      * you'd reach for to fix the config.
      */
@@ -90,7 +90,7 @@ class GezelServiceProvider extends PackageServiceProvider
 
     /**
      * A driver value that isn't 'sanctum'/'passport' must name a class-string
-     * implementing both contracts — the same class binds to each, per
+     * implementing both contracts, and the same class binds to each, per
      * config/gezel.php's own comment. Validated here so a typo ("sanctumm")
      * fails loud with the actual bad value, not three layers downstream as
      * "Target [ContainerBearerIssuer] is not instantiable."

@@ -28,6 +28,10 @@ function migrateGezelOwnerTable(string $ownerModelClass): void
 /**
  * Runs Sanctum's real create_personal_access_tokens_table migration so
  * driver tests exercise actual PAT lookup, not a fake.
+ *
+ * The filename is pinned to vendor: a Sanctum release that renames or moves
+ * this migration breaks these tests with a file-not-found, not a assertion
+ * failure. That is the trade for testing against the real schema.
  */
 function migratePersonalAccessTokensTable(): void
 {
@@ -36,8 +40,11 @@ function migratePersonalAccessTokensTable(): void
 
 /**
  * Runs Passport's real oauth_* migrations, generates real RSA keys, and
- * registers a personal-access-grant client for $provider — the minimum a
+ * registers a personal-access-grant client for $provider: the minimum a
  * PassportVerifier test needs to issue and validate a genuine bearer.
+ *
+ * These filenames are pinned to vendor for the same reason, and with the same
+ * trade, as migratePersonalAccessTokensTable() above.
  */
 function migratePassportTables(string $provider): void
 {
