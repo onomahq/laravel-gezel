@@ -21,6 +21,6 @@ return [
     ],
     'owner' => [
         'model' => User::class,  // any Eloquent model: User, Team, ...
-        'acknowledges_shared_memory' => env('GEZEL_OWNER_ACKNOWLEDGES_SHARED_MEMORY', false),  // required true for non-User owner.model — see Module 2
+        'acknowledges_shared_memory' => env('GEZEL_OWNER_ACKNOWLEDGES_SHARED_MEMORY', false),  // required true when owner.model cannot authenticate
     ],
 ];

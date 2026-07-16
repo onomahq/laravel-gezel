@@ -4,11 +4,11 @@ use Illuminate\Support\Facades\Schema;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 
 beforeEach(function () {
-    migrateGezelOwnerTable(GezelUser::class, 'gezel_users');
+    migrateGezelOwnerTable(GezelUser::class);
 });
 
 afterEach(function () {
-    Schema::dropIfExists('gezel_users');
+    Schema::dropIfExists('users');
 });
 
 it('mints a gezel_id lazily and persists it', function () {
