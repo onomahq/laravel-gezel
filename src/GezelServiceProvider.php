@@ -2,9 +2,9 @@
 
 namespace Onomahq\Gezel;
 
+use Onomahq\Gezel\Commands\GezelCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Onomahq\Gezel\Commands\GezelCommand;
 
 class GezelServiceProvider extends PackageServiceProvider
 {
