@@ -7,6 +7,10 @@ use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Tests\Fixtures\SanctumOwner;
 
 beforeEach(function () {
+    if (! class_exists(PersonalAccessToken::class)) {
+        $this->markTestSkipped('requires laravel/sanctum');
+    }
+
     migrateGezelOwnerTable(SanctumOwner::class, 'sanctum_owners');
     migratePersonalAccessTokensTable();
 });

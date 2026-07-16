@@ -10,6 +10,10 @@ use Onomahq\Gezel\Auth\PrincipalKind;
 use Onomahq\Gezel\Tests\Fixtures\PassportOwner;
 
 beforeEach(function () {
+    if (! class_exists(Token::class)) {
+        $this->markTestSkipped('requires laravel/passport');
+    }
+
     migrateGezelOwnerTable(PassportOwner::class, 'passport_owners');
     migratePassportTables('gezel_passport_owners');
 

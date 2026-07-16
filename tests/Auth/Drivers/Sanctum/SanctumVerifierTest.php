@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\PersonalAccessToken;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
@@ -8,6 +9,10 @@ use Onomahq\Gezel\Auth\PrincipalKind;
 use Onomahq\Gezel\Tests\Fixtures\SanctumOwner;
 
 beforeEach(function () {
+    if (! class_exists(PersonalAccessToken::class)) {
+        $this->markTestSkipped('requires laravel/sanctum');
+    }
+
     migrateGezelOwnerTable(SanctumOwner::class, 'sanctum_owners');
     migratePersonalAccessTokensTable();
 });
