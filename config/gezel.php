@@ -23,4 +23,7 @@ return [
         'model' => User::class,  // any Eloquent model: User, Team, ...
         'acknowledges_shared_memory' => env('GEZEL_OWNER_ACKNOWLEDGES_SHARED_MEMORY', false),  // required true for non-User owner.model — see Module 2
     ],
+    'auth' => [
+        'driver' => env('GEZEL_AUTH_DRIVER', 'sanctum'),  // 'sanctum' | 'passport' | a ContainerBearerIssuer+PrincipalVerifier binding class-string
+    ],
 ];

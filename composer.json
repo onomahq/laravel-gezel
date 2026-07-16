@@ -21,7 +21,9 @@
         "illuminate/contracts": "^11.0||^12.0||^13.0"
     },
     "require-dev": {
+        "laravel/passport": "^13.0",
         "laravel/pint": "^1.14",
+        "laravel/sanctum": "^4.0",
         "nunomaduro/collision": "^8.8",
         "larastan/larastan": "^3.0",
         "orchestra/testbench": "^11.0.0||^10.0.0||^9.0.0",
@@ -31,6 +33,10 @@
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0"
+    },
+    "suggest": {
+        "laravel/passport": "Required to use the 'passport' gezel.auth.driver (Stagent-compatible, user-bound owners only).",
+        "laravel/sanctum": "Required to use the 'sanctum' gezel.auth.driver (default; works on any HasApiTokens owner)."
     },
     "autoload": {
         "psr-4": {
