@@ -11,6 +11,7 @@ return [
         'service_token' => env('GEZEL_SERVICE_TOKEN'),  // middleware → app ([apps.application].token)
     ],
     'timeout' => env('GEZEL_TIMEOUT', 120),
+    'lock_store' => env('GEZEL_LOCK_STORE'),  // cache store backing the bearer-rotation lock; null uses the default. Must share state across processes (redis, memcached, database) or the lock is decoration.
     'provisioning' => [
         'enabled' => env('GEZEL_PROVISIONING_ENABLED', true),
         'strategy' => 'opt-in',   // 'observer' (signup auto) | 'opt-in' (UI action) | 'manual'
