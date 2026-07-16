@@ -81,7 +81,7 @@ class GezelStreamClient implements StreamsGezelChat
         // Checked before $errno: aborting from the progress callback is itself
         // a cURL error (CURLE_ABORTED_BY_CALLBACK), and a stop is not a failure.
         if ($stopped) {
-            return StreamOutcome::Stopped;
+            return StreamOutcome::forTurn(stopped: true, errored: $errored);
         }
 
         if ($errno !== 0) {
@@ -92,9 +92,7 @@ class GezelStreamClient implements StreamsGezelChat
             return $this->fail($onEvent, "Gezel stream failed with status {$status}");
         }
 
-        // A gateway that reports an error mid-stream broke the turn just as
-        // surely as one that died, so both land on the same outcome.
-        return $errored ? StreamOutcome::Failed : StreamOutcome::Completed;
+        return StreamOutcome::forTurn(stopped: false, errored: $errored);
     }
 
     public function requestStop(string $gezelId, string $externalChatId): void

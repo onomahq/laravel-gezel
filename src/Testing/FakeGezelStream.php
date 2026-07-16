@@ -83,7 +83,7 @@ class FakeGezelStream implements StreamsGezelChat
 
         foreach ($this->events as $index => $event) {
             if ($this->stopAfter !== null && $index >= $this->stopAfter) {
-                return StreamOutcome::Stopped;
+                return StreamOutcome::forTurn(stopped: true, errored: $errored);
             }
 
             $errored = $errored || $event->type === StreamEventType::Error;
@@ -98,10 +98,10 @@ class FakeGezelStream implements StreamsGezelChat
                 $onEvent(StreamEvent::error($this->failWith));
             }
 
-            return StreamOutcome::Failed;
+            return StreamOutcome::forTurn(stopped: false, errored: true);
         }
 
-        return $errored ? StreamOutcome::Failed : StreamOutcome::Completed;
+        return StreamOutcome::forTurn(stopped: false, errored: $errored);
     }
 
     public function requestStop(string $gezelId, string $externalChatId): void

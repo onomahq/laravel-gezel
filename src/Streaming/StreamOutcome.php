@@ -12,4 +12,17 @@ enum StreamOutcome: string
     case Completed = 'completed';
     case Stopped = 'stopped';
     case Failed = 'failed';
+
+    /**
+     * The one place the outcome rule lives: a stop wins over an error, an
+     * error wins over completion. Both the real client and the fake call this.
+     */
+    public static function forTurn(bool $stopped, bool $errored): self
+    {
+        return match (true) {
+            $stopped => self::Stopped,
+            $errored => self::Failed,
+            default => self::Completed,
+        };
+    }
 }
