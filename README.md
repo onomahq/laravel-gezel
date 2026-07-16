@@ -1,5 +1,8 @@
 # laravel-gezel
 
+[![GitHub Tests Action Status](https://github.com/onomahq/laravel-gezel/actions/workflows/run-tests.yml/badge.svg)](https://github.com/onomahq/laravel-gezel/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Code Style Action Status](https://github.com/onomahq/laravel-gezel/actions/workflows/fix-php-code-style-issues.yml/badge.svg)](https://github.com/onomahq/laravel-gezel/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+
 Shared Laravel package for apps built on Gezel, the per-user agent runtime behind the middleware gateway. Used by Onoma Platform, Stagent and Calmunity.
 
 Spec: `research/26-07-16-laravel-gezel-package.md` in [onomahq/onoma](https://github.com/onomahq/onoma).
@@ -14,6 +17,25 @@ Spec: `research/26-07-16-laravel-gezel-package.md` in [onomahq/onoma](https://gi
 - Provisioning job + artisan commands (`gezel:provision-missing`, `gezel:reconcile-container-bearers`, `gezel:health`)
 - Abstract `GezelMcpServer` on `laravel/mcp` + `TurnContextProvider` seam
 
+## Installation
+
+```bash
+composer require onomahq/laravel-gezel
+php artisan vendor:publish --tag="laravel-gezel-config"
+php artisan vendor:publish --tag="laravel-gezel-migrations"
+php artisan migrate
+```
+
+## Testing
+
+```bash
+composer test
+```
+
 ## Status
 
-Pre-scaffold. Built in reviewable PRs per module; review by Lennert and Mischa.
+Scaffold. Built in reviewable PRs per module; review by Lennert and Mischa.
+
+## License
+
+The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
