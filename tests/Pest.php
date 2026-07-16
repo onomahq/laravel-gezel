@@ -7,12 +7,12 @@ use Onomahq\Gezel\Tests\TestCase;
 uses(TestCase::class)->in(__DIR__);
 
 /**
- * Creates a minimal owner table, points gezel.owner.model at it, then runs
+ * Creates a minimal users table, points gezel.owner.model at it, then runs
  * the real add_gezel_columns migration stub to add the gezel_* columns.
  */
-function migrateGezelOwnerTable(string $ownerModelClass, string $table): void
+function migrateGezelOwnerTable(string $ownerModelClass): void
 {
-    Schema::create($table, function (Blueprint $table) {
+    Schema::create('users', function (Blueprint $table) {
         $table->id();
         $table->string('name')->nullable();
         $table->timestamps();
