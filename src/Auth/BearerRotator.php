@@ -31,9 +31,12 @@ final class BearerRotator
      */
     public function rotate(Model $owner, callable $pushToMiddleware, callable $deleteOldBearers): string
     {
-        $gezelId = $owner->gezel_id ?? null;
+        // The lock must outlive $pushToMiddleware's own HTTP timeout, or a
+        // slow-but-successful call drops the lock while still in flight and
+        // a concurrent reconcile walks in behind it.
+        $lockSeconds = ((int) config('gezel.timeout', 120)) + 30;
 
-        return Cache::lock("gezel-bearer-rotate:{$gezelId}", 30)->block(10, function () use ($owner, $pushToMiddleware, $deleteOldBearers): string {
+        return Cache::lock("gezel-bearer-rotate:{$owner->getKey()}", $lockSeconds)->block(10, function () use ($owner, $pushToMiddleware, $deleteOldBearers): string {
             $bearer = $this->issuer->issue($owner);
 
             $pushToMiddleware($bearer);

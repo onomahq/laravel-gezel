@@ -8,18 +8,10 @@ use Onomahq\Gezel\Auth\GezelPrincipal;
 use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Auth\TokenCandidate;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
-use RuntimeException;
 
 final class SanctumVerifier implements PrincipalVerifier
 {
-    public function __construct(private readonly PrincipalGate $gate)
-    {
-        if (! class_exists(PersonalAccessToken::class)) {
-            throw new RuntimeException(
-                "gezel.auth.driver is 'sanctum' but laravel/sanctum is not installed. Run `composer require laravel/sanctum`."
-            );
-        }
-    }
+    public function __construct(private readonly PrincipalGate $gate) {}
 
     public function verify(string $bearer): ?GezelPrincipal
     {

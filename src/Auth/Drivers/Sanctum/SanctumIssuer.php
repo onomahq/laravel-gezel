@@ -22,18 +22,9 @@ final class SanctumIssuer implements ContainerBearerIssuer
      */
     public const TOKEN_NAME = 'gezel-container';
 
-    public function __construct()
-    {
-        if (! trait_exists(HasApiTokens::class)) {
-            throw new RuntimeException(
-                "gezel.auth.driver is 'sanctum' but laravel/sanctum is not installed. Run `composer require laravel/sanctum`."
-            );
-        }
-    }
-
     public function issue(Model $owner): string
     {
-        if (! method_exists($owner, 'createToken')) {
+        if (! in_array(HasApiTokens::class, class_uses_recursive($owner), true) || ! method_exists($owner, 'createToken')) {
             throw new RuntimeException(
                 sprintf('%s must use the %s trait to issue a Gezel container bearer.', $owner::class, HasApiTokens::class)
             );

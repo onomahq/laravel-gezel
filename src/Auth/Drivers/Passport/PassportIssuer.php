@@ -4,8 +4,8 @@ namespace Onomahq\Gezel\Auth\Drivers\Passport;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Passport\HasApiTokens;
 use Laravel\Passport\PersonalAccessTokenResult;
-use Laravel\Passport\Token;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use RuntimeException;
 
@@ -19,15 +19,6 @@ final class PassportIssuer implements ContainerBearerIssuer
 {
     public const TOKEN_NAME = 'gezel-mcp';
 
-    public function __construct()
-    {
-        if (! class_exists(Token::class)) {
-            throw new RuntimeException(
-                "gezel.auth.driver is 'passport' but laravel/passport is not installed. Run `composer require laravel/passport`."
-            );
-        }
-    }
-
     public function issue(Model $owner): string
     {
         if (! $owner instanceof Authenticatable) {
@@ -36,9 +27,9 @@ final class PassportIssuer implements ContainerBearerIssuer
             );
         }
 
-        if (! method_exists($owner, 'createToken')) {
+        if (! in_array(HasApiTokens::class, class_uses_recursive($owner), true) || ! method_exists($owner, 'createToken')) {
             throw new RuntimeException(
-                sprintf('%s must use the Laravel\\Passport\\HasApiTokens trait to issue a Gezel container bearer.', $owner::class)
+                sprintf('%s must use the %s trait to issue a Gezel container bearer.', $owner::class, HasApiTokens::class)
             );
         }
 

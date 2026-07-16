@@ -5,6 +5,7 @@ use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Auth\PrincipalKind;
 use Onomahq\Gezel\Auth\PrincipalStatus;
 use Onomahq\Gezel\Auth\TokenCandidate;
+use Onomahq\Gezel\Tests\Fixtures\GezelTeam;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 
 function makeCandidate(array $overrides = []): TokenCandidate
@@ -82,6 +83,22 @@ it('rejects an owner with no gezel_id', function () {
     $owner->exists = true;
 
     $principal = (new PrincipalGate)->admit(makeCandidate(['owner' => $owner]));
+
+    expect($principal)->toBeNull();
+});
+
+it('rejects a token whose tokenable is not an instance of the configured owner model', function () {
+    // The scenario a driver alone can't rule out: a token resolved from its
+    // own tokenable record, where that record is real and even carries a
+    // gezel_id, but belongs to some other Authenticatable than the one
+    // gezel.owner.model configures (e.g. a Team's token when owner.model is
+    // User).
+    config()->set('gezel.owner.model', GezelUser::class);
+
+    $wrongModelOwner = new GezelTeam(['id' => 1, 'gezel_id' => 'a-real-looking-gezel-id']);
+    $wrongModelOwner->exists = true;
+
+    $principal = (new PrincipalGate)->admit(makeCandidate(['owner' => $wrongModelOwner]));
 
     expect($principal)->toBeNull();
 });

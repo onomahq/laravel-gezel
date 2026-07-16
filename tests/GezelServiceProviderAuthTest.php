@@ -5,6 +5,7 @@ use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
+use Onomahq\Gezel\Auth\GezelPrincipal;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\GezelServiceProvider;
@@ -28,19 +29,33 @@ it('binds the passport driver when configured', function () {
     expect($this->app->make(PrincipalVerifier::class))->toBeInstanceOf(PassportVerifier::class);
 });
 
-it('leaves the container-bearer bindings untouched for a custom driver value', function () {
-    config()->set('gezel.auth.driver', 'custom-driver');
-
-    $this->app->bind(ContainerBearerIssuer::class, fn () => new class implements ContainerBearerIssuer
+it('binds a class-string driver implementing both contracts to both interfaces', function () {
+    $custom = new class implements ContainerBearerIssuer, PrincipalVerifier
     {
         public function issue(Model $owner): string
         {
             return 'app-supplied-bearer';
         }
-    });
+
+        public function verify(string $bearer): ?GezelPrincipal
+        {
+            return null;
+        }
+    };
+
+    config()->set('gezel.auth.driver', $custom::class);
+    $this->app->singleton($custom::class, fn () => $custom);
 
     (new GezelServiceProvider($this->app))->packageRegistered();
 
     expect($this->app->make(ContainerBearerIssuer::class)->issue(new GezelUser))
         ->toBe('app-supplied-bearer');
+    expect($this->app->make(PrincipalVerifier::class))->toBe($custom);
+});
+
+it('throws a clear exception naming the bad value for an unresolvable custom driver', function () {
+    config()->set('gezel.auth.driver', 'not-a-real-class');
+
+    expect(fn () => (new GezelServiceProvider($this->app))->packageRegistered())
+        ->toThrow(RuntimeException::class, 'not-a-real-class');
 });

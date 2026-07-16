@@ -11,7 +11,6 @@ use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Auth\TokenCandidate;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\Support\Owner;
-use RuntimeException;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
@@ -20,13 +19,7 @@ final class PassportVerifier implements PrincipalVerifier
     public function __construct(
         private readonly ResourceServer $server,
         private readonly PrincipalGate $gate,
-    ) {
-        if (! class_exists(Token::class)) {
-            throw new RuntimeException(
-                "gezel.auth.driver is 'passport' but laravel/passport is not installed. Run `composer require laravel/passport`."
-            );
-        }
-    }
+    ) {}
 
     public function verify(string $bearer): ?GezelPrincipal
     {
