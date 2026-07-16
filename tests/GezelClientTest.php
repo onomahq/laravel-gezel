@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Onomahq\Gezel\GezelClient;
 
@@ -22,6 +23,46 @@ it('proxies requests through /v1/proxy/{gezel_id} with the app_token and a reque
     });
 });
 
+it('url-encodes the gezel id and chat id in proxied paths', function () {
+    Http::fake(['middleware.test/*' => Http::response(['messages' => []], 200)]);
+
+    (new GezelClient)->fetchHistory('gezel/../evil', 'chat 1');
+
+    Http::assertSent(fn ($request) => str_starts_with(
+        $request->url(),
+        'http://middleware.test/v1/proxy/gezel%2F..%2Fevil/v1/sessions/chat%201/messages'
+    ));
+});
+
+it('forwards the inbound X-Request-Id so one trace spans app, middleware, and Gezel', function () {
+    Http::fake(['middleware.test/*' => Http::response(['data' => []], 200)]);
+
+    request()->headers->set('X-Request-Id', 'trace-abc');
+
+    (new GezelClient)->models('gezel-1');
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Request-Id', 'trace-abc'));
+});
+
+it('prefers the request_id attribute over the inbound header', function () {
+    Http::fake(['middleware.test/*' => Http::response(['data' => []], 200)]);
+
+    request()->headers->set('X-Request-Id', 'trace-header');
+    request()->attributes->set('request_id', 'trace-attribute');
+
+    (new GezelClient)->models('gezel-1');
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Request-Id', 'trace-attribute'));
+});
+
+it('mints a request id when there is no inbound one', function () {
+    Http::fake(['middleware.test/*' => Http::response(['data' => []], 200)]);
+
+    (new GezelClient)->models('gezel-1');
+
+    Http::assertSent(fn ($request) => $request->header('X-Request-Id')[0] !== '');
+});
+
 it('filters fetchHistory to non-empty user/assistant turns', function () {
     Http::fake([
         'middleware.test/v1/proxy/gezel-1/v1/sessions/chat-1/messages*' => Http::response([
@@ -42,7 +83,7 @@ it('filters fetchHistory to non-empty user/assistant turns', function () {
     ]);
 });
 
-it('swallows failures from activateSession and deleteSession', function () {
+it('swallows an error response from activateSession and deleteSession', function () {
     Http::fake([
         'middleware.test/*' => Http::response([], 500),
     ]);
@@ -51,6 +92,24 @@ it('swallows failures from activateSession and deleteSession', function () {
     (new GezelClient)->deleteSession('gezel-1', 'chat-1');
 
     Http::assertSentCount(2);
+});
+
+it('swallows an unreachable middleware from activateSession and deleteSession', function () {
+    Http::fake(fn () => throw new ConnectionException('unreachable'));
+
+    expect(function () {
+        (new GezelClient)->activateSession('gezel-1', 'chat-1');
+        (new GezelClient)->deleteSession('gezel-1', 'chat-1');
+    })->not->toThrow(Throwable::class);
+});
+
+it('sends deleteSession with agent_id as a query parameter', function () {
+    Http::fake(['middleware.test/*' => Http::response([], 200)]);
+
+    (new GezelClient)->deleteSession('gezel-1', 'chat-1');
+
+    Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+        && $request->url() === 'http://middleware.test/v1/proxy/gezel-1/v1/sessions/chat-1?agent_id=default');
 });
 
 it('normalizes the models() response shape', function () {

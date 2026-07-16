@@ -20,7 +20,7 @@ class GezelClient
     public function fetchHistory(string $gezelId, string $chatId): array
     {
         $messages = $this->request($gezelId)
-            ->get("/v1/sessions/{$chatId}/messages", ['agent_id' => 'default'])
+            ->get($this->sessionPath($chatId).'/messages', ['agent_id' => 'default'])
             ->throw()
             ->json('messages', []);
 
@@ -33,15 +33,16 @@ class GezelClient
     }
 
     /**
-     * Point Gezel's proactive-delivery target at this chat. Best-effort: this
-     * must never fail on an unreachable middleware.
+     * Point Gezel's proactive-delivery target at this chat. Best-effort: an
+     * unreachable middleware and a middleware that answers 500 are both
+     * swallowed, and the delivery target self-corrects on the next turn.
      */
     public function activateSession(string $gezelId, string $chatId): void
     {
         try {
-            $this->request($gezelId)->post("/v1/sessions/{$chatId}/activate");
+            $this->request($gezelId)->post($this->sessionPath($chatId).'/activate')->throw();
         } catch (Throwable) {
-            // Best-effort: the delivery target self-corrects on the next turn.
+            // Best-effort: nothing to roll back locally.
         }
     }
 
@@ -53,7 +54,10 @@ class GezelClient
     public function deleteSession(string $gezelId, string $chatId): void
     {
         try {
-            $this->request($gezelId)->delete("/v1/sessions/{$chatId}?agent_id=default");
+            $this->request($gezelId)
+                ->withQueryParameters(['agent_id' => 'default'])
+                ->delete($this->sessionPath($chatId))
+                ->throw();
         } catch (Throwable) {
             // Best-effort: nothing to roll back locally.
         }
@@ -67,7 +71,7 @@ class GezelClient
         $raw = $this->request($gezelId)->get('/v1/models')->throw()->json('data', []);
 
         return array_map(fn (array $m): array => [
-            'model' => $m['id'] ?? $m['model'] ?? '',
+            'model' => $m['id'] ?? '',
             'display_name' => $m['display_name'] ?? $m['id'] ?? '',
             'owned_by' => $m['owned_by'] ?? '',
             'is_premium' => $m['is_premium'] ?? false,
@@ -80,7 +84,7 @@ class GezelClient
      * The personas available in this container, for the picker. The
      * container only mounts its account's set, so the list is scoped.
      *
-     * @return array{default_persona_id: string, data: list<array<string, mixed>>}
+     * @return array{default_persona_id: string, data: list<array{id: string, name: string, description: ?string, is_default: bool}>}
      */
     public function personas(string $gezelId): array
     {
@@ -148,29 +152,49 @@ class GezelClient
 
     protected function proxyBaseUrl(string $gezelId): string
     {
-        return rtrim((string) config('gezel.middleware.url'), '/')."/v1/proxy/{$gezelId}";
+        return rtrim((string) config('gezel.middleware.url'), '/').'/v1/proxy/'.rawurlencode($gezelId);
+    }
+
+    protected function sessionPath(string $chatId): string
+    {
+        return '/v1/sessions/'.rawurlencode($chatId);
     }
 
     /**
-     * Cross-system tracing: forward the inbound request_id to Gezel so a
-     * single trace can be followed across the consumer app → middleware →
-     * Gezel. Falls back to a fresh uuid when there's no inbound request
-     * (e.g. a queued job).
-     *
      * @return array<string, string>
      */
     protected function traceHeaders(): array
     {
-        $requestId = null;
+        return ['X-Request-Id' => $this->requestId()];
+    }
 
-        if (app()->bound('request')) {
-            $requestId = (string) request()->attributes->get('request_id', '');
+    /**
+     * Cross-system tracing: forward the inbound request id so a single trace
+     * can be followed across the consumer app, the middleware, and Gezel.
+     * Reads the `request_id` request attribute first, which is the hook to set
+     * from your own middleware to join a trace the app already started, then
+     * the inbound X-Request-Id header, and mints a uuid when there is no
+     * inbound request at all (e.g. a queued job).
+     */
+    protected function requestId(): string
+    {
+        if (! app()->bound('request')) {
+            return (string) Str::uuid();
         }
 
-        if ($requestId === null || $requestId === '') {
-            $requestId = (string) Str::uuid();
+        $request = request();
+        $attribute = $request->attributes->get('request_id');
+
+        if (is_string($attribute) && $attribute !== '') {
+            return $attribute;
         }
 
-        return ['X-Request-Id' => $requestId];
+        $header = $request->header('X-Request-Id');
+
+        if (is_string($header) && $header !== '') {
+            return $header;
+        }
+
+        return (string) Str::uuid();
     }
 }
