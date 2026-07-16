@@ -63,10 +63,7 @@
         "laravel": {
             "providers": [
                 "Onomahq\\Gezel\\GezelServiceProvider"
-            ],
-            "aliases": {
-                "Gezel": "Onomahq\\Gezel\\Facades\\Gezel"
-            }
+            ]
         }
     },
     "minimum-stability": "dev",

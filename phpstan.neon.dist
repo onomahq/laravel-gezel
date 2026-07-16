@@ -8,3 +8,12 @@ parameters:
         - config
         - database
     tmpDir: build/phpstan
+    configDirectories:
+        - config
+    ignoreErrors:
+        -
+            message: '#Class App\\Models\\User not found#'
+            path: config/gezel.php
+        -
+            identifier: trait.unused
+            path: src/Concerns/HasGezelAgent.php
