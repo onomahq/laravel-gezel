@@ -2,8 +2,6 @@
 
 use Illuminate\Http\Request;
 use Onomahq\Gezel\Auth\GezelPrincipal;
-use Onomahq\Gezel\Auth\PrincipalKind;
-use Onomahq\Gezel\Auth\PrincipalStatus;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\Http\Middleware\AuthenticateGezelContainerPrincipal;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -39,8 +37,8 @@ it('attaches the resolved principal to request attributes and passes through', f
         ownerId: '1',
         gezelId: 'gezel-1',
         principalId: 'token-1',
-        kind: PrincipalKind::GezelContainer,
-        status: PrincipalStatus::Active,
+        kind: 'gezel_container',
+        status: 'active',
         expiresAt: null,
         scopes: ['*'],
     );

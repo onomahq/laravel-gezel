@@ -3,8 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Onomahq\Gezel\Auth\GezelPrincipal;
-use Onomahq\Gezel\Auth\PrincipalKind;
-use Onomahq\Gezel\Auth\PrincipalStatus;
 use Onomahq\Gezel\Http\RateLimitKeyResolver;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 
@@ -22,8 +20,8 @@ it('keys on the already-resolved principal, never a body field, when one is atta
         ownerId: '1',
         gezelId: 'real-gezel-id',
         principalId: 'token-1',
-        kind: PrincipalKind::GezelContainer,
-        status: PrincipalStatus::Active,
+        kind: 'gezel_container',
+        status: 'active',
         expiresAt: null,
         scopes: ['*'],
     ));

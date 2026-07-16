@@ -33,8 +33,8 @@ class PrincipalsVerifyController extends Controller
         return response()->json([
             'principal_id' => $principal->principalId,
             'user_id' => $principal->gezelId,
-            'kind' => $principal->kind->value,
-            'status' => $principal->status->value,
+            'kind' => $principal->kind,
+            'status' => $principal->status,
             'scopes' => $principal->scopes,
         ]);
     }
