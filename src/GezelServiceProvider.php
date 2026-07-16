@@ -2,6 +2,12 @@
 
 namespace Onomahq\Gezel;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Foundation\Exceptions\Handler as FoundationExceptionHandler;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Token;
 use Laravel\Sanctum\PersonalAccessToken;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
@@ -9,8 +15,15 @@ use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
+use Onomahq\Gezel\Contracts\AgentMessageHandler;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
+use Onomahq\Gezel\Contracts\OwnerMembershipVerifier;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
+use Onomahq\Gezel\Contracts\TurnContextProvider;
+use Onomahq\Gezel\Defaults\AlwaysAllowMembershipVerifier;
+use Onomahq\Gezel\Defaults\FiresGezelAgentMessageReceived;
+use Onomahq\Gezel\Defaults\NullTurnContextProvider;
+use Onomahq\Gezel\Http\RateLimitKeyResolver;
 use RuntimeException;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -22,6 +35,7 @@ class GezelServiceProvider extends PackageServiceProvider
         $package
             ->name('laravel-gezel')
             ->hasConfigFile()
+            ->hasRoute('gezel')
             ->hasMigration('add_gezel_columns');
     }
 
@@ -34,6 +48,53 @@ class GezelServiceProvider extends PackageServiceProvider
             'passport' => $this->bindPassportAuth(),
             default => $this->bindCustomAuth($driver),
         };
+
+        // bindIf so an app that already registered its own implementation —
+        // e.g. Onoma broadcasting AgentMessage over Reverb — keeps it.
+        $this->app->bindIf(AgentMessageHandler::class, FiresGezelAgentMessageReceived::class);
+        $this->app->bindIf(TurnContextProvider::class, NullTurnContextProvider::class);
+        $this->app->bindIf(OwnerMembershipVerifier::class, AlwaysAllowMembershipVerifier::class);
+    }
+
+    public function packageBooted(): void
+    {
+        // The Gezel middleware relays every callback from one IP, so the
+        // shared 'api' limiter would cap all internal traffic together.
+        // Generous per-principal limit, plus an IP ceiling against probing.
+        RateLimiter::for('gezel-internal', function (Request $request) {
+            $key = app(RateLimitKeyResolver::class)->resolve($request);
+
+            return [
+                Limit::perMinute(600)->by('gezel-ip:'.$request->ip()),
+                Limit::perMinute(120)->by('gezel-principal:'.$key),
+            ];
+        });
+
+        $this->rescueValidationOnInternalRoutes();
+    }
+
+    /**
+     * A wrapping middleware can't catch a controller's ValidationException:
+     * Illuminate\Routing\Pipeline renders exceptions to a Response at each
+     * slice (middleware included), so nothing downstream of a slice ever
+     * bubbles up to it as a throwable — only the exception handler's own
+     * renderable() hook sees the exception itself.
+     */
+    private function rescueValidationOnInternalRoutes(): void
+    {
+        $handler = $this->app->make(ExceptionHandler::class);
+
+        if (! $handler instanceof FoundationExceptionHandler) {
+            return;
+        }
+
+        $prefix = trim((string) config('gezel.routes.prefix'), '/');
+
+        $handler->renderable(function (ValidationException $e, Request $request) use ($prefix) {
+            if ($request->is($prefix.'/*')) {
+                return response()->json(['error' => 'not found'], 404);
+            }
+        });
     }
 
     /**

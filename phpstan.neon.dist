@@ -17,3 +17,14 @@ parameters:
         -
             identifier: trait.unused
             path: src/Concerns/HasGezelAgent.php
+        -
+            # Larastan resolves ExceptionHandler::class against Testbench's
+            # workbench skeleton, which binds Collision's console handler —
+            # not representative of a real consuming app, where the contract
+            # is bound to Illuminate\Foundation\Exceptions\Handler (or a
+            # subclass) and this check is both real and necessary.
+            identifier: instanceof.alwaysFalse
+            path: src/GezelServiceProvider.php
+        -
+            identifier: deadCode.unreachable
+            path: src/GezelServiceProvider.php
