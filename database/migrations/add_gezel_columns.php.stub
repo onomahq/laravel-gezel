@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table($this->ownerTable(), function (Blueprint $table) {
+            $table->uuid('gezel_id')->nullable()->unique();
+            $table->string('gezel_container_id')->nullable();
+            $table->timestamp('gezel_provisioned_at')->nullable();
+            $table->timestamp('gezel_opted_in_at')->nullable();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table($this->ownerTable(), function (Blueprint $table) {
+            $table->dropColumn(['gezel_id', 'gezel_container_id', 'gezel_provisioned_at', 'gezel_opted_in_at']);
+        });
+    }
+
+    protected function ownerTable(): string
+    {
+        return (new (config('gezel.owner.model')))->getTable();
+    }
+};

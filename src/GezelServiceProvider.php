@@ -2,6 +2,7 @@
 
 namespace Onomahq\Gezel;
 
+use Onomahq\Gezel\Support\Owner;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -14,5 +15,10 @@ class GezelServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasMigration('add_gezel_columns');
+    }
+
+    public function packageBooted(): void
+    {
+        Owner::guardSharedMemoryAcknowledgement();
     }
 }
