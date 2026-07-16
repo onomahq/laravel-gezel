@@ -36,28 +36,56 @@ class GezelServiceProvider extends PackageServiceProvider
         };
     }
 
+    /**
+     * Binds behind closures, not an eager check, so a missing laravel/sanctum
+     * install only fails the request that actually resolves one of these —
+     * never every artisan command booting the framework, including the one
+     * you'd reach for to fix the config.
+     */
     private function bindSanctumAuth(): void
     {
-        if (! class_exists(PersonalAccessToken::class)) {
-            throw new RuntimeException(
-                "gezel.auth.driver is 'sanctum' but laravel/sanctum is not installed. Run `composer require laravel/sanctum`."
-            );
-        }
+        $guard = function (): void {
+            if (! class_exists(PersonalAccessToken::class)) {
+                throw new RuntimeException(
+                    "gezel.auth.driver is 'sanctum' but laravel/sanctum is not installed. Run `composer require laravel/sanctum`."
+                );
+            }
+        };
 
-        $this->app->singleton(ContainerBearerIssuer::class, SanctumIssuer::class);
-        $this->app->singleton(PrincipalVerifier::class, SanctumVerifier::class);
+        $this->app->singleton(ContainerBearerIssuer::class, function ($app) use ($guard) {
+            $guard();
+
+            return $app->make(SanctumIssuer::class);
+        });
+
+        $this->app->singleton(PrincipalVerifier::class, function ($app) use ($guard) {
+            $guard();
+
+            return $app->make(SanctumVerifier::class);
+        });
     }
 
     private function bindPassportAuth(): void
     {
-        if (! class_exists(Token::class)) {
-            throw new RuntimeException(
-                "gezel.auth.driver is 'passport' but laravel/passport is not installed. Run `composer require laravel/passport`."
-            );
-        }
+        $guard = function (): void {
+            if (! class_exists(Token::class)) {
+                throw new RuntimeException(
+                    "gezel.auth.driver is 'passport' but laravel/passport is not installed. Run `composer require laravel/passport`."
+                );
+            }
+        };
 
-        $this->app->singleton(ContainerBearerIssuer::class, PassportIssuer::class);
-        $this->app->singleton(PrincipalVerifier::class, PassportVerifier::class);
+        $this->app->singleton(ContainerBearerIssuer::class, function ($app) use ($guard) {
+            $guard();
+
+            return $app->make(PassportIssuer::class);
+        });
+
+        $this->app->singleton(PrincipalVerifier::class, function ($app) use ($guard) {
+            $guard();
+
+            return $app->make(PassportVerifier::class);
+        });
     }
 
     /**

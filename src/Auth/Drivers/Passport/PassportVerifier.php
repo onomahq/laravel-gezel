@@ -3,6 +3,7 @@
 namespace Onomahq\Gezel\Auth\Drivers\Passport;
 
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Passport\Passport;
 use Laravel\Passport\Token;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
@@ -32,9 +33,22 @@ final class PassportVerifier implements PrincipalVerifier
             return null;
         }
 
-        $token = Token::query()->find($psr->getAttribute('oauth_access_token_id'));
+        $tokenModel = Passport::tokenModel();
+        $token = $tokenModel::query()->with('client')->find($psr->getAttribute('oauth_access_token_id'));
 
         if (! $token instanceof Token) {
+            return null;
+        }
+
+        // user_id is only a valid FK into gezel.owner.model's table if the
+        // token was issued under an auth provider mapped to that same model
+        // — the same resolution Passport's own (deprecated) Token::user()
+        // relation performs. Skipping this would let a token minted for an
+        // unrelated Authenticatable on the same schema resolve to whatever
+        // owner row happens to share its primary key.
+        $providerName = ($token->client->provider ?? null) ?: config('auth.guards.api.provider');
+
+        if (config("auth.providers.{$providerName}.model") !== Owner::model()) {
             return null;
         }
 

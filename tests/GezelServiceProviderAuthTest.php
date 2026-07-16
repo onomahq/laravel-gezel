@@ -59,3 +59,22 @@ it('throws a clear exception naming the bad value for an unresolvable custom dri
     expect(fn () => (new GezelServiceProvider($this->app))->packageRegistered())
         ->toThrow(RuntimeException::class, 'not-a-real-class');
 });
+
+it('binds sanctum/passport lazily — registering never resolves the driver', function () {
+    // A missing laravel/sanctum install must only fail the request that
+    // actually resolves a driver, never every artisan command booting the
+    // framework. Asserting resolved() stays false is the only way to prove
+    // that from a test: laravel/sanctum is always installed here, so
+    // resolving would never throw either way, but an eager check would
+    // still have run inside packageRegistered() itself.
+    config()->set('gezel.auth.driver', 'sanctum');
+
+    (new GezelServiceProvider($this->app))->packageRegistered();
+
+    expect($this->app->resolved(ContainerBearerIssuer::class))->toBeFalse();
+    expect($this->app->resolved(PrincipalVerifier::class))->toBeFalse();
+
+    $this->app->make(ContainerBearerIssuer::class);
+
+    expect($this->app->resolved(ContainerBearerIssuer::class))->toBeTrue();
+});

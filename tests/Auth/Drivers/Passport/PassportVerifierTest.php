@@ -7,6 +7,7 @@ use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Auth\PrincipalKind;
+use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 use Onomahq\Gezel\Tests\Fixtures\PassportOwner;
 
 beforeEach(function () {
@@ -67,6 +68,25 @@ it('rejects a revoked container bearer', function () {
     $bearer = (new PassportIssuer)->issue($owner);
 
     Token::query()->where('user_id', $owner->getKey())->update(['revoked' => true]);
+
+    $principal = passportVerifier()->verify($bearer);
+
+    expect($principal)->toBeNull();
+});
+
+it('rejects a bearer whose auth provider does not map to the configured owner model', function () {
+    // The gap a prior review found: user_id is only a valid FK into
+    // gezel.owner.model's table if the token was actually issued under a
+    // provider mapped to that model. Mint under PassportOwner's provider,
+    // then point gezel.owner.model at an unrelated Authenticatable — the
+    // token's user_id would otherwise resolve to whatever row of the new
+    // model happens to share that primary key.
+    $owner = PassportOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $bearer = (new PassportIssuer)->issue($owner);
+
+    config()->set('gezel.owner.model', GezelUser::class);
 
     $principal = passportVerifier()->verify($bearer);
 
