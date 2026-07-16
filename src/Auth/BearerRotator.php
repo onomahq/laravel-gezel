@@ -6,7 +6,6 @@ use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use RuntimeException;
 
@@ -43,8 +42,9 @@ final class BearerRotator
         // Minting is only durable if it is committed. Inside a transaction the
         // token row is invisible to everyone else, so the middleware would
         // take delivery of a bearer the container cannot yet authenticate
-        // with, and a rollback would hand it one that never existed.
-        if (DB::transactionLevel() > 0) {
+        // with, and a rollback would hand it one that never existed. Asked on
+        // the owner's connection: that is where the token rows live.
+        if ($owner->getConnection()->transactionLevel() > 0) {
             throw new RuntimeException('BearerRotator cannot run inside a database transaction because the middleware would receive a bearer whose token row is not committed yet.');
         }
 

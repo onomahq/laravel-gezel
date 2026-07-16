@@ -4,6 +4,7 @@ namespace Onomahq\Gezel\Auth\Drivers\Passport;
 
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Passport\Passport;
+use Laravel\Passport\Token;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
 use Onomahq\Gezel\Auth\GezelPrincipal;
@@ -77,9 +78,15 @@ final class PassportVerifier implements PrincipalVerifier
      * a null provider is not permission, it is the absence of the only
      * evidence that says which model `user_id` points at.
      */
-    private function issuedForOwnerModel(object $token): bool
+    private function issuedForOwnerModel(Token $token): bool
     {
-        $provider = $token->client->provider ?? null;
+        // A deleted client is a dead token, not a misconfiguration: reject it
+        // cleanly instead of throwing about a provider that cannot exist.
+        if ($token->client === null) {
+            return false;
+        }
+
+        $provider = $token->client->provider;
 
         if (! is_string($provider) || $provider === '') {
             throw new RuntimeException('The Passport client that issued this container bearer has no provider, so Gezel cannot prove its user_id refers to the configured gezel.owner.model.');

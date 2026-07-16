@@ -14,5 +14,10 @@ use Onomahq\Gezel\Auth\PrincipalGate;
  */
 interface PrincipalVerifier
 {
+    /**
+     * Null means the bearer does not resolve to an active container principal.
+     *
+     * @throws \RuntimeException when the app's auth setup makes verification impossible (misconfiguration, not a bad bearer)
+     */
     public function verify(string $bearer): ?GezelPrincipal;
 }

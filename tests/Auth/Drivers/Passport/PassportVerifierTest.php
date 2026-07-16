@@ -115,3 +115,14 @@ it('refuses a bearer from a client with no provider rather than guessing the own
     expect(fn () => passportVerifier()->verify($bearer))
         ->toThrow(RuntimeException::class, 'has no provider');
 });
+
+it('rejects a bearer whose client was deleted instead of throwing', function () {
+    $owner = PassportOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $bearer = (new PassportIssuer)->issue($owner);
+
+    Client::query()->delete();
+
+    expect(passportVerifier()->verify($bearer))->toBeNull();
+});
