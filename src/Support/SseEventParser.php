@@ -2,18 +2,19 @@
 
 namespace Onomahq\Gezel\Support;
 
+use Onomahq\Gezel\Streaming\StreamEvent;
+
 /**
  * Incremental parser for the gateway's `data: {...}` SSE lines. Pure and
  * curl-independent: feed it raw bytes as they arrive (a full line, a partial
- * line, several lines at once — it buffers), get back the fully-decoded
- * events found so far.
+ * line, several lines at once, it buffers), get back the events found so far.
  */
 class SseEventParser
 {
     protected string $buffer = '';
 
     /**
-     * @return list<array{type: string, data: array<string, mixed>}>
+     * @return list<StreamEvent>
      */
     public function push(string $chunk): array
     {
@@ -24,23 +25,30 @@ class SseEventParser
             $line = trim(substr($this->buffer, 0, $pos));
             $this->buffer = substr($this->buffer, $pos + 1);
 
-            if ($line === '' || ! str_starts_with($line, 'data: ')) {
+            if (! str_starts_with($line, 'data:')) {
                 continue;
             }
 
-            $data = substr($line, 6);
+            // The space after `data:` is optional per the SSE spec.
+            $data = ltrim(substr($line, 5));
 
-            if ($data === '[DONE]') {
+            if ($data === '' || $data === '[DONE]') {
                 continue;
             }
 
+            /** @var mixed $decoded */
             $decoded = json_decode($data, true);
 
-            if (! is_array($decoded) || ! isset($decoded['type']) || ! is_string($decoded['type'])) {
+            if (! is_array($decoded)) {
                 continue;
             }
 
-            $events[] = ['type' => $decoded['type'], 'data' => $decoded];
+            /** @var array<string, mixed> $decoded */
+            $event = StreamEvent::fromWire($decoded);
+
+            if ($event !== null) {
+                $events[] = $event;
+            }
         }
 
         return $events;

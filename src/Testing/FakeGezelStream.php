@@ -3,65 +3,105 @@
 namespace Onomahq\Gezel\Testing;
 
 use Onomahq\Gezel\Contracts\StreamsGezelChat;
-use Onomahq\Gezel\Support\DispatchesStreamCallbacks;
+use Onomahq\Gezel\Streaming\StreamEvent;
+use Onomahq\Gezel\Streaming\StreamEventType;
+use Onomahq\Gezel\Streaming\StreamOutcome;
+use Onomahq\Gezel\Streaming\StreamRequest;
 
 /**
  * In-memory StreamsGezelChat: plays back a canned event sequence into the
- * caller's callbacks instead of opening a real connection. Bind it over the
- * interface in a consumer's test suite:
+ * caller's callback instead of opening a real connection. Playback takes raw
+ * wire payloads, exactly what the gateway sends, and decodes them through the
+ * same StreamEvent::fromWire() the real client uses, so a consumer's tests
+ * cannot pass against an event shape production never produces.
  *
- *   $fake = new FakeGezelStream();
- *   $this->app->instance(StreamsGezelChat::class, $fake->playback([...]));
+ *   $fake = (new FakeGezelStream)->playback([
+ *       ['type' => 'token', 'content' => 'Hi'],
+ *       ['type' => 'done', 'content' => 'Hi'],
+ *   ]);
+ *   $this->app->instance(StreamsGezelChat::class, $fake);
  */
 class FakeGezelStream implements StreamsGezelChat
 {
-    use DispatchesStreamCallbacks;
-
-    /** @var list<array{type: string, data: array<string, mixed>}> */
+    /** @var list<StreamEvent> */
     protected array $events = [];
 
-    /** @var list<array{gezel_id: string, external_chat_id: string, text: string, persona_id: ?string, turn_context: ?string}> */
+    /** @var list<StreamRequest> */
     protected array $calls = [];
 
     /** @var list<array{gezel_id: string, external_chat_id: string}> */
     protected array $stopRequests = [];
 
+    protected ?string $failWith = null;
+
+    protected ?int $stopAfter = null;
+
     /**
-     * @param  list<array{type: string, data?: array<string, mixed>}>  $events
+     * @param  list<array<string, mixed>>  $events  Raw wire payloads, e.g. ['type' => 'token', 'content' => 'Hi'].
      */
     public function playback(array $events): static
     {
-        $this->events = array_map(
-            fn (array $event): array => ['type' => $event['type'], 'data' => $event['data'] ?? []],
-            $events
-        );
+        $this->events = [];
+
+        foreach ($events as $wire) {
+            $event = StreamEvent::fromWire($wire);
+
+            if ($event !== null) {
+                $this->events[] = $event;
+            }
+        }
 
         return $this;
     }
 
-    public function stream(
-        string $gezelId,
-        string $externalChatId,
-        string $text,
-        ?string $personaId = null,
-        ?string $turnContext = null,
-        ?callable $onToken = null,
-        ?callable $onToolCall = null,
-        ?callable $onToolResult = null,
-        ?callable $onDone = null,
-        ?callable $onError = null,
-    ): void {
-        $this->calls[] = [
-            'gezel_id' => $gezelId,
-            'external_chat_id' => $externalChatId,
-            'text' => $text,
-            'persona_id' => $personaId,
-            'turn_context' => $turnContext,
-        ];
+    /**
+     * Break the turn after the played-back events, the way an unreachable
+     * gateway does: an error event, then StreamOutcome::Failed.
+     */
+    public function failWith(string $message): static
+    {
+        $this->failWith = $message;
 
-        foreach ($this->events as $event) {
-            $this->dispatchStreamEvent($event, $onToken, $onToolCall, $onToolResult, $onDone, $onError);
+        return $this;
+    }
+
+    /**
+     * Cut the turn short after $count events, the way requestStop() from
+     * another process does: playback truncates and the call returns Stopped.
+     */
+    public function stopAfter(int $count): static
+    {
+        $this->stopAfter = $count;
+
+        return $this;
+    }
+
+    public function stream(StreamRequest $request, ?callable $onEvent = null): StreamOutcome
+    {
+        $this->calls[] = $request;
+        $errored = false;
+
+        foreach ($this->events as $index => $event) {
+            if ($this->stopAfter !== null && $index >= $this->stopAfter) {
+                return StreamOutcome::Stopped;
+            }
+
+            $errored = $errored || $event->type === StreamEventType::Error;
+
+            if ($onEvent !== null) {
+                $onEvent($event);
+            }
         }
+
+        if ($this->failWith !== null) {
+            if ($onEvent !== null) {
+                $onEvent(StreamEvent::error($this->failWith));
+            }
+
+            return StreamOutcome::Failed;
+        }
+
+        return $errored ? StreamOutcome::Failed : StreamOutcome::Completed;
     }
 
     public function requestStop(string $gezelId, string $externalChatId): void
@@ -69,7 +109,7 @@ class FakeGezelStream implements StreamsGezelChat
         $this->stopRequests[] = ['gezel_id' => $gezelId, 'external_chat_id' => $externalChatId];
     }
 
-    /** @return list<array{gezel_id: string, external_chat_id: string, text: string, persona_id: ?string, turn_context: ?string}> */
+    /** @return list<StreamRequest> */
     public function calls(): array
     {
         return $this->calls;
