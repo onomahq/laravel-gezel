@@ -86,7 +86,9 @@ final class PassportVerifier implements PrincipalVerifier
             return false;
         }
 
-        $provider = $token->client->provider;
+        // getAttribute: `provider` is a plain column with no property
+        // declaration on Passport's Client model.
+        $provider = $token->client->getAttribute('provider');
 
         if (! is_string($provider) || $provider === '') {
             throw new RuntimeException('The Passport client that issued this container bearer has no provider, so Gezel cannot prove its user_id refers to the configured gezel.owner.model.');
