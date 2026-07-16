@@ -3,7 +3,7 @@
 namespace Onomahq\Gezel\Auth\Drivers\Sanctum;
 
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use Onomahq\Gezel\Auth\GezelPrincipal;
 use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Auth\TokenCandidate;
@@ -15,9 +15,12 @@ final class SanctumVerifier implements PrincipalVerifier
 
     public function verify(string $bearer): ?GezelPrincipal
     {
-        $token = PersonalAccessToken::findToken($bearer);
+        // Sanctum::personalAccessTokenModel(), not the concrete class: an app
+        // that called usePersonalAccessTokenModel() stores its PATs elsewhere.
+        $tokenModel = Sanctum::personalAccessTokenModel();
+        $token = $tokenModel::findToken($bearer);
 
-        if (! $token instanceof PersonalAccessToken) {
+        if ($token === null) {
             return null;
         }
 
@@ -35,10 +38,9 @@ final class SanctumVerifier implements PrincipalVerifier
             owner: $owner,
             principalId: (string) $token->getKey(),
             tokenName: (string) ($token->name ?? ''),
-            expectedTokenName: SanctumIssuer::TOKEN_NAME,
             revoked: false, // Sanctum tokens are deleted on revoke, not flagged; a lookup hit means live.
             expiresAt: $expiresAt?->toImmutable(),
             scopes: $token->abilities ?? [],
-        ));
+        ), SanctumIssuer::TOKEN_NAME);
     }
 }
