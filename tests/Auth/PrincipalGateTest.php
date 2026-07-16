@@ -2,8 +2,6 @@
 
 use Carbon\CarbonImmutable;
 use Onomahq\Gezel\Auth\PrincipalGate;
-use Onomahq\Gezel\Auth\PrincipalKind;
-use Onomahq\Gezel\Auth\PrincipalStatus;
 use Onomahq\Gezel\Auth\TokenCandidate;
 use Onomahq\Gezel\Tests\Fixtures\GezelTeam;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
@@ -32,8 +30,8 @@ it('admits a candidate that clears every invariant', function () {
     expect($principal->ownerId)->toBe('1');
     expect($principal->gezelId)->toBe('owner-gezel-id');
     expect($principal->principalId)->toBe('token-1');
-    expect($principal->kind)->toBe(PrincipalKind::GezelContainer);
-    expect($principal->status)->toBe(PrincipalStatus::Active);
+    expect($principal->kind)->toBe('gezel_container');
+    expect($principal->status)->toBe('active');
 });
 
 it('rejects a token whose name does not match the expected container token name', function () {

@@ -5,7 +5,6 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
-use Onomahq\Gezel\Auth\PrincipalKind;
 use Onomahq\Gezel\Tests\Fixtures\SanctumOwner;
 
 beforeEach(function () {
@@ -33,7 +32,7 @@ it('verifies a bearer minted by SanctumIssuer into a GezelPrincipal', function (
     expect($principal)->not->toBeNull();
     expect($principal->ownerId)->toBe((string) $owner->getKey());
     expect($principal->gezelId)->toBe($owner->gezel_id);
-    expect($principal->kind)->toBe(PrincipalKind::GezelContainer);
+    expect($principal->kind)->toBe('gezel_container');
 });
 
 it('rejects an ordinary PAT that was never named as a container bearer', function () {

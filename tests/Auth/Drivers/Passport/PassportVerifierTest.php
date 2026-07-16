@@ -6,7 +6,6 @@ use League\OAuth2\Server\ResourceServer;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
-use Onomahq\Gezel\Auth\PrincipalKind;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 use Onomahq\Gezel\Tests\Fixtures\PassportOwner;
 
@@ -47,7 +46,7 @@ it('verifies a bearer minted by PassportIssuer into a GezelPrincipal', function 
     expect($principal)->not->toBeNull();
     expect($principal->ownerId)->toBe((string) $owner->getKey());
     expect($principal->gezelId)->toBe($owner->gezel_id);
-    expect($principal->kind)->toBe(PrincipalKind::GezelContainer);
+    expect($principal->kind)->toBe('gezel_container');
 });
 
 it('rejects a Passport token that was never named as a container bearer', function () {

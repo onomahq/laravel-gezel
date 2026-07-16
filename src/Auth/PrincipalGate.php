@@ -47,8 +47,8 @@ final class PrincipalGate
             ownerId: (string) $candidate->owner->getKey(),
             gezelId: $gezelId,
             principalId: $candidate->principalId,
-            kind: PrincipalKind::GezelContainer,
-            status: PrincipalStatus::Active,
+            kind: 'gezel_container',
+            status: 'active',
             expiresAt: $candidate->expiresAt,
             scopes: $candidate->scopes,
         );
