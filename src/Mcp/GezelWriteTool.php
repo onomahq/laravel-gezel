@@ -30,9 +30,7 @@ abstract class GezelWriteTool extends Tool
 {
     public function shouldRegister(): bool
     {
-        $owner = $this->currentOwner();
-
-        return $owner !== null && app(WritesGate::class)->writesEnabled($owner);
+        return $this->writesAllowed();
     }
 
     /**
@@ -44,13 +42,14 @@ abstract class GezelWriteTool extends Tool
      */
     protected function writesDisabledResponse(): ?Response
     {
+        return $this->writesAllowed() ? null : Response::error('Making changes is disabled for this connection.');
+    }
+
+    private function writesAllowed(): bool
+    {
         $owner = $this->currentOwner();
 
-        if ($owner !== null && app(WritesGate::class)->writesEnabled($owner)) {
-            return null;
-        }
-
-        return Response::error('Making changes is disabled for this connection.');
+        return $owner !== null && app(WritesGate::class)->writesEnabled($owner);
     }
 
     private function currentOwner(): ?Model
