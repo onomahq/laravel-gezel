@@ -44,6 +44,13 @@ it('binds a class-string driver implementing both contracts to both interfaces',
             return 'app-supplied-bearer';
         }
 
+        public function activePrincipalIds(Model $owner): array
+        {
+            return [];
+        }
+
+        public function revoke(Model $owner, array $principalIds): void {}
+
         public function verify(string $bearer): ?GezelPrincipal
         {
             return null;

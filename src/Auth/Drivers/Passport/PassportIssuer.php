@@ -38,4 +38,24 @@ final class PassportIssuer implements ContainerBearerIssuer
 
         return $result->accessToken;
     }
+
+    public function activePrincipalIds(Model $owner): array
+    {
+        if (! method_exists($owner, 'tokens')) {
+            return [];
+        }
+
+        return $owner->tokens()->where('name', self::TOKEN_NAME)->where('revoked', false)->pluck('id')->all();
+    }
+
+    public function revoke(Model $owner, array $principalIds): void
+    {
+        if ($principalIds === [] || ! method_exists($owner, 'tokens')) {
+            return;
+        }
+
+        // Flagged, not deleted, matching PassportVerifier reading `revoked`
+        // off the token row rather than treating a missing row as revoked.
+        $owner->tokens()->whereIn('id', $principalIds)->update(['revoked' => true]);
+    }
 }

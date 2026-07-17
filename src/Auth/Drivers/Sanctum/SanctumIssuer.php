@@ -35,4 +35,24 @@ final class SanctumIssuer implements ContainerBearerIssuer
 
         return $token->plainTextToken;
     }
+
+    public function activePrincipalIds(Model $owner): array
+    {
+        if (! method_exists($owner, 'tokens')) {
+            return [];
+        }
+
+        return $owner->tokens()->where('name', self::TOKEN_NAME)->pluck('id')->all();
+    }
+
+    public function revoke(Model $owner, array $principalIds): void
+    {
+        if ($principalIds === [] || ! method_exists($owner, 'tokens')) {
+            return;
+        }
+
+        // Sanctum tokens are deleted on revoke, not flagged, matching
+        // SanctumVerifier's own assumption that a lookup hit means live.
+        $owner->tokens()->whereIn('id', $principalIds)->delete();
+    }
 }

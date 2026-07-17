@@ -124,6 +124,13 @@ it('accepts a custom ContainerBearerIssuer without depending on a concrete drive
         {
             return 'fixed-bearer';
         }
+
+        public function activePrincipalIds(Model $owner): array
+        {
+            return [];
+        }
+
+        public function revoke(Model $owner, array $principalIds): void {}
     };
 
     $bearer = (new BearerRotator($issuer))->rotate($owner, fn () => null, fn () => null);
