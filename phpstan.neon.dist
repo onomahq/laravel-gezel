@@ -20,3 +20,11 @@ parameters:
         -
             identifier: trait.unused
             path: src/Concerns/DeprovisionsGezelContainer.php
+        -
+            # Under Testbench the container binds ExceptionHandler to
+            # Collision's handler, which happens to have renderable(), so
+            # PHPStan reads this guard as always true. It is not: an app is
+            # free to bind a handler implementing only the contract, which
+            # declares no renderable(), and that is the case this guards.
+            identifier: function.alreadyNarrowedType
+            path: src/GezelServiceProvider.php

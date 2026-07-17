@@ -38,4 +38,7 @@ return [
         'path' => env('GEZEL_MCP_PATH', '/mcp'),
         'middleware' => ['auth:sanctum'],  // matches the 'sanctum' auth.driver default above; change together if you switch drivers
     ],
+    'turn_context' => [
+        'enabled' => env('GEZEL_TURN_CONTEXT_ENABLED', false),  // opt-in: registers POST {routes.prefix}/turn-context
+    ],
 ];
