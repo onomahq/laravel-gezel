@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Artisan;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
@@ -22,6 +23,12 @@ it('binds the sanctum driver by default', function () {
 
 it('binds the passport driver when configured', function () {
     config()->set('gezel.auth.driver', 'passport');
+
+    // Resolving PassportVerifier constructs a real ResourceServer, which
+    // requires the RSA keypair on disk, exactly as it would in a real app.
+    // Without this the test's outcome depends on whether a key-generating
+    // test happened to run first.
+    Artisan::call('passport:keys', ['--force' => true]);
 
     (new GezelServiceProvider($this->app))->packageRegistered();
 
