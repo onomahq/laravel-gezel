@@ -4,7 +4,6 @@ namespace Onomahq\Gezel\Console\Commands;
 
 use Illuminate\Console\Command;
 use Onomahq\Gezel\Auth\BearerRotator;
-use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\GezelOrchestrator;
 use Onomahq\Gezel\Support\Owner;
 use RuntimeException;
@@ -27,7 +26,7 @@ class ReconcileContainerBearers extends Command
 
     protected $description = 'Mint fresh Gezel container bearers and recreate existing containers so their persisted token matches this app.';
 
-    public function handle(BearerRotator $rotator, ContainerBearerIssuer $issuer, GezelOrchestrator $orchestrator): int
+    public function handle(BearerRotator $rotator, GezelOrchestrator $orchestrator): int
     {
         $ownerModel = Owner::model();
 
@@ -62,14 +61,11 @@ class ReconcileContainerBearers extends Command
                     throw new RuntimeException("owner {$owner->getKey()} has no gezel_id despite being provisioned.");
                 }
 
-                $previousPrincipalIds = $issuer->activePrincipalIds($owner);
-
-                $rotator->rotate(
+                $rotator->reconcile(
                     $owner,
                     function (string $bearer) use ($orchestrator, $gezelId): void {
                         $orchestrator->recreate($gezelId, $bearer);
                     },
-                    fn () => $issuer->revoke($owner, $previousPrincipalIds),
                 );
 
                 $this->info("Reconciled Gezel bearer for owner {$owner->getKey()}.");

@@ -114,6 +114,54 @@ it('prefixes the lock key with app_id so the same owner id in another app does n
     Cache::lock($onomaKey)->forceRelease();
 });
 
+it('reconcile mints, pushes, then revokes exactly the bearers that were active before minting', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $issuer = new SanctumIssuer;
+    $oldToken = $issuer->issue($owner);
+    $unrelated = $owner->createToken('some-other-token');
+
+    $calls = [];
+
+    $bearer = (new BearerRotator($issuer))->reconcile($owner, function (string $bearer) use (&$calls) {
+        $calls[] = 'push';
+    });
+
+    expect($bearer)->toBeString()->not->toBe($oldToken);
+    expect($calls)->toBe(['push']);
+    expect($owner->tokens()->where('name', SanctumIssuer::TOKEN_NAME)->count())->toBe(1);
+    expect($owner->tokens()->where('id', $unrelated->accessToken->id)->exists())->toBeTrue();
+});
+
+it('reconcile never revokes when the push fails', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $issuer = new SanctumIssuer;
+    $issuer->issue($owner);
+
+    try {
+        (new BearerRotator($issuer))->reconcile($owner, function (string $bearer): void {
+            throw new RuntimeException('middleware unreachable');
+        });
+    } catch (RuntimeException $e) {
+        expect($e->getMessage())->toBe('middleware unreachable');
+    }
+
+    expect($owner->tokens()->where('name', SanctumIssuer::TOKEN_NAME)->count())->toBe(2);
+});
+
+it('reconcile is a no-op revoke on an owner with no previous bearer', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $bearer = (new BearerRotator(new SanctumIssuer))->reconcile($owner, fn () => null);
+
+    expect($bearer)->toBeString()->not->toBeEmpty();
+    expect($owner->tokens()->where('name', SanctumIssuer::TOKEN_NAME)->count())->toBe(1);
+});
+
 it('accepts a custom ContainerBearerIssuer without depending on a concrete driver', function () {
     $owner = SanctumOwner::create(['name' => 'Ada']);
     $owner->ensureGezelId();
