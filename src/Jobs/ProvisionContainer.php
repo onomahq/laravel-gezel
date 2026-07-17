@@ -12,6 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Onomahq\Gezel\Auth\BearerRotator;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Exceptions\ContainerLifecycleDisabledException;
@@ -51,9 +52,14 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
         $this->afterCommit = true;
     }
 
+    /**
+     * Prefixed with app_id like every other Gezel lock key ({@see BearerRotator}):
+     * owner primary keys collide across apps, so Onoma's owner 1 must not
+     * share a unique-job lock with Stagent's owner 1 on a shared cache store.
+     */
     public function uniqueId(): string
     {
-        return (string) $this->owner->getKey();
+        return sprintf('gezel:%s:provision-container:%s', config('gezel.app_id'), $this->owner->getKey());
     }
 
     public function uniqueVia(): Repository
@@ -76,6 +82,12 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        // Captured before minting so a failure only revokes the bearer this
+        // attempt just created, never a bearer some other process already
+        // has live for this owner (e.g. a previous attempt that provisioned
+        // successfully but died before the forceFill/save below committed).
+        $previousPrincipalIds = $issuer->activePrincipalIds($this->owner);
+
         $gezelId = $this->owner->ensureGezelId();
         $bearer = $issuer->issue($this->owner);
 
@@ -85,11 +97,11 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
             // Dev/test env without Docker: middleware refused container
             // provisioning. The bearer just minted authenticates nothing, so
             // revoke it rather than leave a live, orphaned token behind.
-            $this->revokeMintedBearer($issuer);
+            $this->revokeMintedBearer($issuer, $previousPrincipalIds);
 
             return;
         } catch (Throwable $e) {
-            $this->revokeMintedBearer($issuer);
+            $this->revokeMintedBearer($issuer, $previousPrincipalIds);
 
             throw $e;
         }
@@ -111,8 +123,13 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
         ]);
     }
 
-    private function revokeMintedBearer(ContainerBearerIssuer $issuer): void
+    /**
+     * @param  array<int, int|string>  $previousPrincipalIds
+     */
+    private function revokeMintedBearer(ContainerBearerIssuer $issuer, array $previousPrincipalIds): void
     {
-        $issuer->revoke($this->owner, $issuer->activePrincipalIds($this->owner));
+        $newPrincipalIds = array_values(array_diff($issuer->activePrincipalIds($this->owner), $previousPrincipalIds));
+
+        $issuer->revoke($this->owner, $newPrincipalIds);
     }
 }

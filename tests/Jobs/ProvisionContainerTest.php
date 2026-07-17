@@ -4,6 +4,7 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\PersonalAccessToken;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\GezelOrchestrator;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
@@ -116,20 +117,59 @@ it('does not leave a live bearer behind across repeated failed attempts', functi
     expect($owner->tokens()->count())->toBe(0);
 });
 
+it('never revokes a bearer that already existed before this attempt minted its own', function () {
+    // Reproduces: provision() succeeds but the job dies before forceFill/save
+    // commits, so gezel_provisioned_at stays null and a retry mints a second
+    // bearer against a container that already exists (AlreadyExists). Only
+    // the second attempt's own bearer may be revoked; the first is the one
+    // the live container actually holds.
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    $issuer = app(ContainerBearerIssuer::class);
+    $preExistingBearer = $issuer->issue($owner);
+
+    Http::fake([
+        'middleware.test/v1/containers/*/provision' => Http::response('boom', 409),
+    ]);
+
+    try {
+        (new ProvisionContainer($owner))->handle($issuer, app(GezelOrchestrator::class));
+    } catch (RequestException) {
+        // expected
+    }
+
+    expect($owner->tokens()->count())->toBe(1);
+    expect(PersonalAccessToken::findToken($preExistingBearer))->not->toBeNull();
+});
+
 it('defers dispatch until after the enclosing transaction commits', function () {
     $owner = SanctumOwner::create(['name' => 'Ada']);
 
     expect((new ProvisionContainer($owner))->afterCommit)->toBeTrue();
 });
 
-it('is unique per owner and locks via the configured lock store', function () {
+it('is unique per owner, prefixed with app_id, and locks via the configured lock store', function () {
+    config()->set('gezel.app_id', 'onoma');
+
     $owner = SanctumOwner::create(['name' => 'Ada']);
 
     $job = new ProvisionContainer($owner);
 
-    expect($job->uniqueId())->toBe((string) $owner->getKey());
+    expect($job->uniqueId())->toBe("gezel:onoma:provision-container:{$owner->getKey()}");
     expect($job->uniqueVia())->toBeInstanceOf(Repository::class);
     expect($job->uniqueFor())->toBeGreaterThan(0);
+});
+
+it('does not collide with another app\'s owner sharing the same primary key', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    config()->set('gezel.app_id', 'onoma');
+    $onomaId = (new ProvisionContainer($owner))->uniqueId();
+
+    config()->set('gezel.app_id', 'stagent');
+    $stagentId = (new ProvisionContainer($owner))->uniqueId();
+
+    expect($onomaId)->not->toBe($stagentId);
 });
 
 it('never carries the minted bearer in its serialized payload', function () {
