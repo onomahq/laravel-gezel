@@ -38,9 +38,9 @@ class AgentMessagesController extends Controller
         // and the target verifier has not seen should reach it.
         $payload = $request->validate([
             'message' => ['required', 'string'],
-            'chat_id' => ['sometimes', 'string'],
-            'session_id' => ['sometimes', 'string'],
-            'external_chat_id' => ['sometimes', 'string'],
+            'chat_id' => ['sometimes', 'nullable', 'string'],
+            'session_id' => ['sometimes', 'nullable', 'string'],
+            'external_chat_id' => ['sometimes', 'nullable', 'string'],
         ]);
 
         /** @var GezelPrincipal $principal */

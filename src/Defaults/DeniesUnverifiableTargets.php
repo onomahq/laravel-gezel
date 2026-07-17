@@ -21,7 +21,12 @@ final class DeniesUnverifiableTargets implements TargetOwnershipVerifier
 {
     public function verify(Model $owner, array $payload): bool
     {
-        $targets = array_keys(array_intersect_key($payload, array_flip(self::TARGET_KEYS)));
+        // Key presence is not naming a target: a container serializing an
+        // absent optional emits an explicit null, which means "no target".
+        $targets = array_keys(array_filter(
+            array_intersect_key($payload, array_flip(self::TARGET_KEYS)),
+            fn ($v) => $v !== null && $v !== '',
+        ));
 
         if ($targets === []) {
             return true;
