@@ -11,6 +11,7 @@ return [
         'service_token' => env('GEZEL_SERVICE_TOKEN'),  // middleware → app ([apps.application].token)
     ],
     'timeout' => env('GEZEL_TIMEOUT', 120),        // request/response calls; a chat turn uses 'stream' below
+    'lock_store' => env('GEZEL_LOCK_STORE'),  // cache store backing the bearer-rotation lock; null uses the default. Must share state across processes (redis, memcached, database) or the lock is decoration.
     'stream' => [
         'connect_timeout' => env('GEZEL_STREAM_CONNECT_TIMEOUT', 10),
         'idle_timeout' => env('GEZEL_STREAM_IDLE_TIMEOUT', 120),   // abort after this long with nothing arriving
@@ -27,5 +28,8 @@ return [
     'owner' => [
         'model' => User::class,  // any Eloquent model: User, Team, ...
         'acknowledges_shared_memory' => env('GEZEL_OWNER_ACKNOWLEDGES_SHARED_MEMORY', false),  // required true when owner.model cannot authenticate
+    ],
+    'auth' => [
+        'driver' => env('GEZEL_AUTH_DRIVER', 'sanctum'),  // 'sanctum' | 'passport' | a ContainerBearerIssuer+PrincipalVerifier binding class-string
     ],
 ];

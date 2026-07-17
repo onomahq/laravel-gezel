@@ -76,7 +76,10 @@ class GezelStreamClient implements StreamsGezelChat
         $error = curl_error($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
 
-        curl_close($handle);
+        // No curl_close(): handles are objects since PHP 8.0 and the function
+        // is deprecated on PHP 8.5; the handle frees itself when it drops out
+        // of scope.
+        unset($handle);
 
         // Checked before $errno: aborting from the progress callback is itself
         // a cURL error (CURLE_ABORTED_BY_CALLBACK), and a stop is not a failure.

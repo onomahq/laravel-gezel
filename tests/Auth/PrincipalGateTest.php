@@ -1,0 +1,115 @@
+<?php
+
+use Carbon\CarbonImmutable;
+use Onomahq\Gezel\Auth\GezelPrincipal;
+use Onomahq\Gezel\Auth\PrincipalGate;
+use Onomahq\Gezel\Auth\TokenCandidate;
+use Onomahq\Gezel\Tests\Fixtures\GezelTeam;
+use Onomahq\Gezel\Tests\Fixtures\GezelUser;
+
+function makeCandidate(array $overrides = []): TokenCandidate
+{
+    $owner = new GezelUser(['id' => 1, 'gezel_id' => 'owner-gezel-id']);
+    $owner->exists = true;
+    $owner->setAttribute('id', 1);
+
+    return new TokenCandidate(
+        owner: $overrides['owner'] ?? $owner,
+        principalId: $overrides['principalId'] ?? 'token-1',
+        tokenName: $overrides['tokenName'] ?? 'gezel-container',
+        revoked: $overrides['revoked'] ?? false,
+        expiresAt: array_key_exists('expiresAt', $overrides) ? $overrides['expiresAt'] : null,
+        scopes: $overrides['scopes'] ?? ['*'],
+    );
+}
+
+function admit(array $overrides = [], string $expectedTokenName = 'gezel-container'): ?GezelPrincipal
+{
+    return (new PrincipalGate)->admit(makeCandidate($overrides), $expectedTokenName);
+}
+
+it('admits a candidate that clears every invariant', function () {
+    $principal = admit();
+
+    expect($principal)->not->toBeNull();
+    expect($principal->ownerId)->toBe('1');
+    expect($principal->gezelId)->toBe('owner-gezel-id');
+    expect($principal->principalId)->toBe('token-1');
+    expect($principal->kind)->toBe('gezel_container');
+    expect($principal->status)->toBe('active');
+});
+
+it('rejects a token whose name does not match the expected container token name', function () {
+    expect(admit(['tokenName' => 'some-other-token']))->toBeNull();
+});
+
+it('never trusts a driver-supplied kind, a plain PAT never admits', function () {
+    // A driver that resolved *any* valid token without checking its name
+    // would produce exactly this candidate; the gate is the only thing
+    // standing between that and a false-positive container principal.
+    expect(admit(['tokenName' => 'api-token']))->toBeNull();
+});
+
+it('rejects a revoked candidate', function () {
+    expect(admit(['revoked' => true]))->toBeNull();
+});
+
+it('rejects an expired candidate', function () {
+    expect(admit(['expiresAt' => CarbonImmutable::now()->subMinute()]))->toBeNull();
+});
+
+it('admits a candidate with a future expiry', function () {
+    expect(admit(['expiresAt' => CarbonImmutable::now()->addHour()]))->not->toBeNull();
+});
+
+it('rejects an owner with no gezel_id', function () {
+    $owner = new GezelUser(['id' => 2]);
+    $owner->exists = true;
+
+    expect(admit(['owner' => $owner]))->toBeNull();
+});
+
+it('rejects a token whose tokenable is not an instance of the configured owner model', function () {
+    // The scenario a driver alone can't rule out: a token resolved from its
+    // own tokenable record, where that record is real and even carries a
+    // gezel_id, but belongs to some other Authenticatable than the one
+    // gezel.owner.model configures (e.g. a Team's token when owner.model is
+    // User).
+    config()->set('gezel.owner.model', GezelUser::class);
+
+    $wrongModelOwner = new GezelTeam(['id' => 1, 'gezel_id' => 'a-real-looking-gezel-id']);
+    $wrongModelOwner->exists = true;
+
+    expect(admit(['owner' => $wrongModelOwner]))->toBeNull();
+});
+
+it('keeps owner_id and gezel_id as distinct fields', function () {
+    $owner = new GezelUser(['id' => 42, 'gezel_id' => 'distinct-gezel-id']);
+    $owner->exists = true;
+
+    $principal = admit(['owner' => $owner]);
+
+    expect($principal->ownerId)->toBe('42');
+    expect($principal->gezelId)->toBe('distinct-gezel-id');
+    expect($principal->ownerId)->not->toBe($principal->gezelId);
+});
+
+it('takes the expected token name from the caller, not from the candidate', function () {
+    // The expected name is the driver's own constant, not a fact off the
+    // token, so a candidate cannot smuggle in the name it wants compared.
+    expect(admit(['tokenName' => 'gezel-mcp'], 'gezel-mcp'))->not->toBeNull();
+    expect(admit(['tokenName' => 'gezel-mcp'], 'gezel-container'))->toBeNull();
+});
+
+it('stamps kind and status itself so no caller can assert them', function () {
+    $principal = admit();
+
+    expect($principal->kind)->toBe(GezelPrincipal::KIND);
+    expect($principal->status)->toBe(GezelPrincipal::STATUS);
+
+    $constructor = new ReflectionMethod(GezelPrincipal::class, '__construct');
+    $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
+
+    expect($params)->not->toContain('kind');
+    expect($params)->not->toContain('status');
+});
