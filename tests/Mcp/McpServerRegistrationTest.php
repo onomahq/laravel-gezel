@@ -43,3 +43,17 @@ it('does not register a route when gezel.mcp.server is null', function () {
             || collect(Route::getRoutes())->contains(fn ($r) => $r->uri() === 'mcp-unconfigured')
     )->toBeFalse();
 });
+
+it('refuses a gezel.mcp.server that does not extend GezelMcpServer', function () {
+    config()->set('gezel.mcp.server', stdClass::class);
+
+    expect(fn () => (new GezelServiceProvider($this->app))->packageBooted())
+        ->toThrow(RuntimeException::class, 'GezelMcpServer');
+});
+
+it('refuses a gezel.mcp.server class-string that does not exist', function () {
+    config()->set('gezel.mcp.server', 'App\Mcp\DoesNotExist');
+
+    expect(fn () => (new GezelServiceProvider($this->app))->packageBooted())
+        ->toThrow(RuntimeException::class, 'GezelMcpServer');
+});

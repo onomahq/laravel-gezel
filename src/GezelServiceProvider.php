@@ -22,6 +22,7 @@ use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\Contracts\StreamsGezelChat;
 use Onomahq\Gezel\Contracts\WritesGate;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
+use Onomahq\Gezel\Mcp\GezelMcpServer;
 use Onomahq\Gezel\Support\Owner;
 use RuntimeException;
 use Spatie\LaravelPackageTools\Package;
@@ -79,12 +80,18 @@ class GezelServiceProvider extends PackageServiceProvider
     {
         $serverClass = config('gezel.mcp.server');
 
-        if (! is_string($serverClass) || $serverClass === '') {
+        if (blank($serverClass)) {
             return;
         }
 
+        if (! is_string($serverClass) || ! class_exists($serverClass) || ! is_subclass_of($serverClass, GezelMcpServer::class)) {
+            throw new RuntimeException(
+                'gezel.mcp.server ['.var_export($serverClass, true).'] must be a class-string extending '.GezelMcpServer::class.'.'
+            );
+        }
+
         Mcp::web(config('gezel.mcp.path', '/mcp'), $serverClass)
-            ->middleware(config('gezel.mcp.middleware', ['auth:api']));
+            ->middleware(config('gezel.mcp.middleware', ['auth:sanctum']));
     }
 
     /**

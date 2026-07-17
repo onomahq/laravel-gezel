@@ -36,6 +36,6 @@ return [
     'mcp' => [
         'server' => null,  // class-string<GezelMcpServer> the host app extends; null registers no route
         'path' => env('GEZEL_MCP_PATH', '/mcp'),
-        'middleware' => ['auth:api'],
+        'middleware' => ['auth:sanctum'],  // matches the 'sanctum' auth.driver default above; change together if you switch drivers
     ],
 ];

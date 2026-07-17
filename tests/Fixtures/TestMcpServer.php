@@ -10,5 +10,7 @@ class TestMcpServer extends GezelMcpServer
 
     protected string $version = '1.0.0';
 
-    protected array $tools = [];
+    protected array $tools = [
+        TestWriteTool::class,
+    ];
 }
