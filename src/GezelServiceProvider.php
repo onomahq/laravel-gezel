@@ -2,6 +2,11 @@
 
 namespace Onomahq\Gezel;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Token;
 use Laravel\Sanctum\PersonalAccessToken;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
@@ -9,20 +14,36 @@ use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumVerifier;
 use Onomahq\Gezel\Auth\PrincipalGate;
+use Onomahq\Gezel\Contracts\AgentMessageHandler;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
+use Onomahq\Gezel\Contracts\OwnerMembershipVerifier;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\Contracts\StreamsGezelChat;
+use Onomahq\Gezel\Contracts\TargetOwnershipVerifier;
+use Onomahq\Gezel\Contracts\TurnContextProvider;
+use Onomahq\Gezel\Defaults\AlwaysAllowMembershipVerifier;
+use Onomahq\Gezel\Defaults\DeniesUnverifiableTargets;
+use Onomahq\Gezel\Defaults\FiresGezelAgentMessageReceived;
+use Onomahq\Gezel\Defaults\NullTurnContextProvider;
+use Onomahq\Gezel\Http\GezelRefusal;
+use Onomahq\Gezel\Http\RateLimitKeyResolver;
 use RuntimeException;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class GezelServiceProvider extends PackageServiceProvider
 {
+    /** Stagent's shipped numbers, per Module 4. */
+    public const IP_LIMIT_PER_MINUTE = 600;
+
+    public const PRINCIPAL_LIMIT_PER_MINUTE = 120;
+
     public function configurePackage(Package $package): void
     {
         $package
             ->name('laravel-gezel')
             ->hasConfigFile()
+            ->hasRoute('gezel')
             ->hasMigration('add_gezel_columns');
     }
 
@@ -37,6 +58,65 @@ class GezelServiceProvider extends PackageServiceProvider
             'passport' => $this->bindPassportAuth(),
             default => $this->bindCustomAuth($driver),
         };
+
+        // bindIf so an app that already registered its own implementation,
+        // e.g. Onoma broadcasting AgentMessage over Reverb, keeps it.
+        $this->app->bindIf(AgentMessageHandler::class, FiresGezelAgentMessageReceived::class);
+        $this->app->bindIf(TurnContextProvider::class, NullTurnContextProvider::class);
+        $this->app->bindIf(OwnerMembershipVerifier::class, AlwaysAllowMembershipVerifier::class);
+        $this->app->bindIf(TargetOwnershipVerifier::class, DeniesUnverifiableTargets::class);
+    }
+
+    public function packageBooted(): void
+    {
+        // The Gezel middleware relays every callback from one IP, so the
+        // shared 'api' limiter would cap all internal traffic together.
+        // Generous per-principal limit, plus an IP ceiling against probing.
+        RateLimiter::for('gezel-internal', function (Request $request) {
+            $key = app(RateLimitKeyResolver::class)->resolve($request);
+
+            return [
+                Limit::perMinute(self::IP_LIMIT_PER_MINUTE)->by('gezel-ip:'.$request->ip()),
+                Limit::perMinute(self::PRINCIPAL_LIMIT_PER_MINUTE)->by('gezel-principal:'.$key),
+            ];
+        });
+
+        // The IP ceiling only. principals/verify resolves the principal, so it
+        // has none to key on: a per-principal limit there would put every
+        // container's verification in one bucket and cap them collectively.
+        RateLimiter::for('gezel-verify', function (Request $request) {
+            return Limit::perMinute(self::IP_LIMIT_PER_MINUTE)->by('gezel-ip:'.$request->ip());
+        });
+
+        $this->rescueValidationOnGezelRoutes();
+    }
+
+    /**
+     * A wrapping middleware can't catch a controller's ValidationException:
+     * Illuminate\Routing\Pipeline renders exceptions to a Response at each
+     * slice (middleware included), so nothing downstream of a slice ever
+     * bubbles up to it as a throwable, and only the exception handler's own
+     * renderable() hook sees the exception itself.
+     *
+     * Scoped by route name, not URL prefix: gezel.routes.prefix is a namespace
+     * the host app also puts its own routes under, and turning that app's 422s
+     * into 404s from inside a package is not ours to do.
+     */
+    private function rescueValidationOnGezelRoutes(): void
+    {
+        $handler = $this->app->make(ExceptionHandler::class);
+
+        if (! method_exists($handler, 'renderable')) {
+            return;
+        }
+
+        $handler->renderable(function (ValidationException $e, Request $request) {
+            $name = $request->route()?->getName();
+
+            if (is_string($name) && str_starts_with($name, 'gezel.')) {
+                return GezelRefusal::response();
+            }
+        });
     }
 
     /**

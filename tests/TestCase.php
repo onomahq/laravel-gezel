@@ -43,5 +43,9 @@ class TestCase extends Orchestra
             'model' => GezelUser::class,
             'acknowledges_shared_memory' => false,
         ]);
+
+        // Routes register once at boot, so the turn-context route (which is
+        // opt-in per Module 4) needs enabling here, not per-test.
+        config()->set('gezel.turn_context.enabled', true);
     }
 }
