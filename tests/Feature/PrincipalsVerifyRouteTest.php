@@ -5,13 +5,13 @@ use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 
 beforeEach(function () {
-    migrateGezelOwnerTable(GezelUser::class, 'gezel_users');
+    migrateGezelOwnerTable(GezelUser::class);
     migratePersonalAccessTokensTable();
     config()->set('gezel.middleware.service_token', 'the-service-token');
 });
 
 afterEach(function () {
-    Schema::dropIfExists('gezel_users');
+    Schema::dropIfExists('users');
     Schema::dropIfExists('personal_access_tokens');
 });
 

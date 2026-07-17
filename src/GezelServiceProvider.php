@@ -19,6 +19,7 @@ use Onomahq\Gezel\Contracts\AgentMessageHandler;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\OwnerMembershipVerifier;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
+use Onomahq\Gezel\Contracts\StreamsGezelChat;
 use Onomahq\Gezel\Contracts\TurnContextProvider;
 use Onomahq\Gezel\Defaults\AlwaysAllowMembershipVerifier;
 use Onomahq\Gezel\Defaults\FiresGezelAgentMessageReceived;
@@ -41,6 +42,8 @@ class GezelServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
+        $this->app->bind(StreamsGezelChat::class, GezelStreamClient::class);
+
         $this->app->singleton(PrincipalGate::class);
 
         match ($driver = config('gezel.auth.driver', 'sanctum')) {
@@ -99,7 +102,7 @@ class GezelServiceProvider extends PackageServiceProvider
 
     /**
      * Binds behind closures, not an eager check, so a missing laravel/sanctum
-     * install only fails the request that actually resolves one of these —
+     * install only fails the request that actually resolves one of these,
      * never every artisan command booting the framework, including the one
      * you'd reach for to fix the config.
      */
@@ -151,7 +154,7 @@ class GezelServiceProvider extends PackageServiceProvider
 
     /**
      * A driver value that isn't 'sanctum'/'passport' must name a class-string
-     * implementing both contracts — the same class binds to each, per
+     * implementing both contracts, and the same class binds to each, per
      * config/gezel.php's own comment. Validated here so a typo ("sanctumm")
      * fails loud with the actual bad value, not three layers downstream as
      * "Target [ContainerBearerIssuer] is not instantiable."

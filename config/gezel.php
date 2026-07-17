@@ -10,7 +10,13 @@ return [
         'app_token' => env('GEZEL_APP_TOKEN'),          // app → middleware ([[apps]].auth_token)
         'service_token' => env('GEZEL_SERVICE_TOKEN'),  // middleware → app ([apps.application].token)
     ],
-    'timeout' => env('GEZEL_TIMEOUT', 120),
+    'timeout' => env('GEZEL_TIMEOUT', 120),        // request/response calls; a chat turn uses 'stream' below
+    'lock_store' => env('GEZEL_LOCK_STORE'),  // cache store backing the bearer-rotation lock; null uses the default. Must share state across processes (redis, memcached, database) or the lock is decoration.
+    'stream' => [
+        'connect_timeout' => env('GEZEL_STREAM_CONNECT_TIMEOUT', 10),
+        'idle_timeout' => env('GEZEL_STREAM_IDLE_TIMEOUT', 120),   // abort after this long with nothing arriving
+        'max_duration' => env('GEZEL_STREAM_MAX_DURATION', 600),   // runaway backstop; also the stop flag's TTL
+    ],
     'provisioning' => [
         'enabled' => env('GEZEL_PROVISIONING_ENABLED', true),
         'strategy' => 'opt-in',   // 'observer' (signup auto) | 'opt-in' (UI action) | 'manual'

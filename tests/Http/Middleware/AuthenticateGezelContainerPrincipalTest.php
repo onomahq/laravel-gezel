@@ -37,8 +37,6 @@ it('attaches the resolved principal to request attributes and passes through', f
         ownerId: '1',
         gezelId: 'gezel-1',
         principalId: 'token-1',
-        kind: 'gezel_container',
-        status: 'active',
         expiresAt: null,
         scopes: ['*'],
     );

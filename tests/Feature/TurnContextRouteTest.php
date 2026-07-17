@@ -7,12 +7,12 @@ use Onomahq\Gezel\Support\Viewing;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 
 beforeEach(function () {
-    migrateGezelOwnerTable(GezelUser::class, 'gezel_users');
+    migrateGezelOwnerTable(GezelUser::class);
     config()->set('gezel.middleware.service_token', 'the-service-token');
 });
 
 afterEach(function () {
-    Schema::dropIfExists('gezel_users');
+    Schema::dropIfExists('users');
 });
 
 function turnContextUri(): string

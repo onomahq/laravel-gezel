@@ -7,11 +7,11 @@ use Onomahq\Gezel\Http\RateLimitKeyResolver;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 
 beforeEach(function () {
-    migrateGezelOwnerTable(GezelUser::class, 'gezel_users');
+    migrateGezelOwnerTable(GezelUser::class);
 });
 
 afterEach(function () {
-    Schema::dropIfExists('gezel_users');
+    Schema::dropIfExists('users');
 });
 
 it('keys on the already-resolved principal, never a body field, when one is attached', function () {
@@ -20,8 +20,6 @@ it('keys on the already-resolved principal, never a body field, when one is atta
         ownerId: '1',
         gezelId: 'real-gezel-id',
         principalId: 'token-1',
-        kind: 'gezel_container',
-        status: 'active',
         expiresAt: null,
         scopes: ['*'],
     ));

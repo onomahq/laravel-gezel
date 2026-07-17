@@ -10,14 +10,14 @@ use RuntimeException;
 
 /**
  * Mints a container bearer as a Sanctum personal access token. Works on any
- * owner model using {@see HasApiTokens} — including non-User owners (Team),
+ * owner model using {@see HasApiTokens}, including non-User owners (Team),
  * unlike the Passport driver.
  */
 final class SanctumIssuer implements ContainerBearerIssuer
 {
     /**
      * The discriminator {@see SanctumVerifier} requires a candidate token to
-     * carry — never trust request input or an unnamed PAT as a container
+     * carry: never trust request input or an unnamed PAT as a container
      * bearer.
      */
     public const TOKEN_NAME = 'gezel-container';

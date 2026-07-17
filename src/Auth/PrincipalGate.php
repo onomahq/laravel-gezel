@@ -11,15 +11,18 @@ use Onomahq\Gezel\Support\Owner;
  * (Stagent's shipped Passport verifier hardcodes `status: 'active'` without
  * checking `revoked` at all). The owner-model check below is the other half:
  * a token resolved from its own tokenable record still isn't proof that
- * tokenable is an instance of the app's configured owner model — a Sanctum
- * PAT belonging to some other Authenticatable on the same schema would
- * otherwise verify clean.
+ * tokenable is an instance of the app's configured owner model, since a
+ * Sanctum PAT belonging to some other Authenticatable on the same schema
+ * would otherwise verify clean.
  */
 final class PrincipalGate
 {
-    public function admit(TokenCandidate $candidate): ?GezelPrincipal
+    /**
+     * @param  string  $expectedTokenName  The name the issuing driver stamps on a container bearer; a token not carrying it is not one.
+     */
+    public function admit(TokenCandidate $candidate, string $expectedTokenName): ?GezelPrincipal
     {
-        if ($candidate->tokenName !== $candidate->expectedTokenName) {
+        if ($candidate->tokenName !== $expectedTokenName) {
             return null;
         }
 
@@ -47,8 +50,6 @@ final class PrincipalGate
             ownerId: (string) $candidate->owner->getKey(),
             gezelId: $gezelId,
             principalId: $candidate->principalId,
-            kind: 'gezel_container',
-            status: 'active',
             expiresAt: $candidate->expiresAt,
             scopes: $candidate->scopes,
         );
