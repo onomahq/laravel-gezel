@@ -4,8 +4,10 @@ namespace Onomahq\Gezel;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Mcp\Facades\Mcp;
 use Laravel\Passport\Token;
 use Laravel\Sanctum\PersonalAccessToken;
+use Onomahq\Gezel\Auth\AlwaysAllowsWrites;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportIssuer;
 use Onomahq\Gezel\Auth\Drivers\Passport\PassportVerifier;
 use Onomahq\Gezel\Auth\Drivers\Sanctum\SanctumIssuer;
@@ -18,6 +20,7 @@ use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\Contracts\StreamsGezelChat;
+use Onomahq\Gezel\Contracts\WritesGate;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
 use Onomahq\Gezel\Support\Owner;
 use RuntimeException;
@@ -45,6 +48,11 @@ class GezelServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(PrincipalGate::class);
 
+        // bindIf, not bind: a host app that binds its own WritesGate (e.g.
+        // Stagent's assistant-writes toggle) before the package boots always
+        // wins. This is the always-on default, not a forced one.
+        $this->app->bindIf(WritesGate::class, AlwaysAllowsWrites::class);
+
         match ($driver = config('gezel.auth.driver', 'sanctum')) {
             'sanctum' => $this->bindSanctumAuth(),
             'passport' => $this->bindPassportAuth(),
@@ -56,6 +64,27 @@ class GezelServiceProvider extends PackageServiceProvider
     {
         $this->registerProvisioningStrategy();
         $this->registerSelfHealing();
+        $this->registerMcpServer();
+    }
+
+    /**
+     * Registers the host's MCP server only when it opts in by setting
+     * gezel.mcp.server to its own class-string extending GezelMcpServer. The
+     * host still defines the server itself (name, instructions, $tools); the
+     * package only wires the route, mirroring how both Stagent and Onoma
+     * Platform call Mcp::web() today, just from the package's boot instead
+     * of the host's routes file.
+     */
+    private function registerMcpServer(): void
+    {
+        $serverClass = config('gezel.mcp.server');
+
+        if (! is_string($serverClass) || $serverClass === '') {
+            return;
+        }
+
+        Mcp::web(config('gezel.mcp.path', '/mcp'), $serverClass)
+            ->middleware(config('gezel.mcp.middleware', ['auth:api']));
     }
 
     /**

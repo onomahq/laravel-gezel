@@ -33,4 +33,9 @@ return [
     'auth' => [
         'driver' => env('GEZEL_AUTH_DRIVER', 'sanctum'),  // 'sanctum' | 'passport' | a ContainerBearerIssuer+PrincipalVerifier binding class-string
     ],
+    'mcp' => [
+        'server' => null,  // class-string<GezelMcpServer> the host app extends; null registers no route
+        'path' => env('GEZEL_MCP_PATH', '/mcp'),
+        'middleware' => ['auth:api'],
+    ],
 ];
