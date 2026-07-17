@@ -6,8 +6,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 use Onomahq\Gezel\Concerns\HasGezelAgent;
+use Onomahq\Gezel\Contracts\GezelOwner;
 
-class PassportOwner extends Authenticatable implements OAuthenticatable
+class PassportOwner extends Authenticatable implements GezelOwner, OAuthenticatable
 {
     use HasApiTokens;
     use HasGezelAgent;

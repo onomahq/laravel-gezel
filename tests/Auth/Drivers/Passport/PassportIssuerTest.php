@@ -45,3 +45,32 @@ it('refuses to issue for a non-Authenticatable owner', function () {
 
     (new PassportIssuer)->issue($owner);
 })->throws(RuntimeException::class);
+
+it('reports the active container-bearer token ids and revokes exactly those by flagging them', function () {
+    $owner = PassportOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $issuer = new PassportIssuer;
+    $issuer->issue($owner);
+    $unrelated = $owner->createToken('some-other-token');
+
+    $ids = $issuer->activePrincipalIds($owner);
+
+    expect($ids)->toHaveCount(1);
+    expect($ids)->not->toContain($unrelated->token->id);
+
+    $issuer->revoke($owner, $ids);
+
+    expect(Token::query()->whereIn('id', $ids)->where('revoked', true)->count())->toBe(1);
+    expect($unrelated->token->fresh()->revoked)->toBeFalse();
+});
+
+it('does nothing when revoking an empty list of ids', function () {
+    $owner = PassportOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+    (new PassportIssuer)->issue($owner);
+
+    (new PassportIssuer)->revoke($owner, []);
+
+    expect(Token::query()->where('revoked', true)->count())->toBe(0);
+});

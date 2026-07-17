@@ -39,6 +39,52 @@ final class BearerRotator
      */
     public function rotate(Model $owner, callable $pushToMiddleware, callable $deleteOldBearers): string
     {
+        return $this->withLock($owner, function () use ($owner, $pushToMiddleware, $deleteOldBearers): string {
+            $bearer = $this->issuer->issue($owner);
+
+            $pushToMiddleware($bearer);
+            $deleteOldBearers();
+
+            return $bearer;
+        });
+    }
+
+    /**
+     * Rotates a bearer for an owner that already has one to retire, without
+     * asking the caller what "the old one" means. Captures the owner's
+     * currently active principal ids from inside the same lock that guards
+     * the mint, so a concurrent rotation for this owner can't complete
+     * between a caller-side capture and the mint and leave the delete
+     * targeting a token that already replaced it (the race a caller capturing
+     * ids before calling {@see rotate()} would be exposed to).
+     *
+     * @param  callable(string $bearer): void  $pushToMiddleware  Push the new bearer to the middleware (e.g. recreate). Throwing aborts the rotation before the old bearers are revoked.
+     *
+     * @throws RuntimeException When called inside a database transaction, or when gezel.lock_store cannot issue locks.
+     * @throws LockTimeoutException When another rotation for this owner holds the lock for longer than 10 seconds.
+     */
+    public function reconcile(Model $owner, callable $pushToMiddleware): string
+    {
+        return $this->withLock($owner, function () use ($owner, $pushToMiddleware): string {
+            $previousPrincipalIds = $this->issuer->activePrincipalIds($owner);
+
+            $bearer = $this->issuer->issue($owner);
+
+            $pushToMiddleware($bearer);
+            $this->issuer->revoke($owner, $previousPrincipalIds);
+
+            return $bearer;
+        });
+    }
+
+    /**
+     * @param  callable(): string  $callback
+     *
+     * @throws RuntimeException When called inside a database transaction, or when gezel.lock_store cannot issue locks.
+     * @throws LockTimeoutException When another rotation for this owner holds the lock for longer than 10 seconds.
+     */
+    private function withLock(Model $owner, callable $callback): string
+    {
         // Minting is only durable if it is committed. Inside a transaction the
         // token row is invisible to everyone else, so the middleware would
         // take delivery of a bearer the container cannot yet authenticate
@@ -48,21 +94,14 @@ final class BearerRotator
             throw new RuntimeException('BearerRotator cannot run inside a database transaction because the middleware would receive a bearer whose token row is not committed yet.');
         }
 
-        // The lock must outlive $pushToMiddleware's own HTTP timeout, or a
+        // The lock must outlive the callback's own HTTP timeout, or a
         // slow-but-successful call drops the lock while still in flight and
         // a concurrent reconcile walks in behind it.
         $lockSeconds = ((int) config('gezel.timeout', 120)) + 30;
 
         return $this->lockStore()
             ->lock($this->lockKey($owner), $lockSeconds)
-            ->block(10, function () use ($owner, $pushToMiddleware, $deleteOldBearers): string {
-                $bearer = $this->issuer->issue($owner);
-
-                $pushToMiddleware($bearer);
-                $deleteOldBearers();
-
-                return $bearer;
-            });
+            ->block(10, $callback);
     }
 
     private function lockStore(): LockProvider

@@ -18,6 +18,9 @@ parameters:
             identifier: trait.unused
             path: src/Concerns/HasGezelAgent.php
         -
+            identifier: trait.unused
+            path: src/Concerns/DeprovisionsGezelContainer.php
+        -
             # Under Testbench the container binds ExceptionHandler to
             # Collision's handler, which happens to have renderable(), so
             # PHPStan reads this guard as always true. It is not: an app is

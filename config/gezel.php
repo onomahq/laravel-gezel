@@ -20,6 +20,7 @@ return [
     'provisioning' => [
         'enabled' => env('GEZEL_PROVISIONING_ENABLED', true),
         'strategy' => 'opt-in',   // 'observer' (signup auto) | 'opt-in' (UI action) | 'manual'
+        'self_heal' => env('GEZEL_PROVISIONING_SELF_HEAL', false),  // hourly gezel:provision-missing
     ],
     'routes' => [
         'prefix' => 'api/v1/internal',
@@ -31,6 +32,11 @@ return [
     ],
     'auth' => [
         'driver' => env('GEZEL_AUTH_DRIVER', 'sanctum'),  // 'sanctum' | 'passport' | a ContainerBearerIssuer+PrincipalVerifier binding class-string
+    ],
+    'mcp' => [
+        'server' => null,  // class-string<GezelMcpServer> the host app extends; null registers no route
+        'path' => env('GEZEL_MCP_PATH', '/mcp'),
+        'middleware' => ['auth:sanctum'],  // matches the 'sanctum' auth.driver default above; change together if you switch drivers
     ],
     'turn_context' => [
         'enabled' => env('GEZEL_TURN_CONTEXT_ENABLED', false),  // opt-in: registers POST {routes.prefix}/turn-context

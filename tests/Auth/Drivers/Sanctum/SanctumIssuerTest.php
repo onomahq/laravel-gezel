@@ -40,3 +40,32 @@ it('refuses to issue for an owner without HasApiTokens', function () {
 
     (new SanctumIssuer)->issue($owner);
 })->throws(RuntimeException::class);
+
+it('reports the active container-bearer token ids and revokes exactly those', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    $issuer = new SanctumIssuer;
+    $issuer->issue($owner);
+    $unrelated = $owner->createToken('some-other-token');
+
+    $ids = $issuer->activePrincipalIds($owner);
+
+    expect($ids)->toHaveCount(1);
+    expect($ids)->not->toContain($unrelated->accessToken->id);
+
+    $issuer->revoke($owner, $ids);
+
+    expect($owner->tokens()->where('name', SanctumIssuer::TOKEN_NAME)->exists())->toBeFalse();
+    expect($owner->tokens()->where('id', $unrelated->accessToken->id)->exists())->toBeTrue();
+});
+
+it('does nothing when revoking an empty list of ids', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+    $token = (new SanctumIssuer)->issue($owner);
+
+    (new SanctumIssuer)->revoke($owner, []);
+
+    expect(PersonalAccessToken::findToken($token))->not->toBeNull();
+});
