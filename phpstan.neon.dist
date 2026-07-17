@@ -18,13 +18,10 @@ parameters:
             identifier: trait.unused
             path: src/Concerns/HasGezelAgent.php
         -
-            # Larastan resolves ExceptionHandler::class against Testbench's
-            # workbench skeleton, which binds Collision's console handler —
-            # not representative of a real consuming app, where the contract
-            # is bound to Illuminate\Foundation\Exceptions\Handler (or a
-            # subclass) and this check is both real and necessary.
-            identifier: instanceof.alwaysFalse
-            path: src/GezelServiceProvider.php
-        -
-            identifier: deadCode.unreachable
+            # Under Testbench the container binds ExceptionHandler to
+            # Collision's handler, which happens to have renderable(), so
+            # PHPStan reads this guard as always true. It is not: an app is
+            # free to bind a handler implementing only the contract, which
+            # declares no renderable(), and that is the case this guards.
+            identifier: function.alreadyNarrowedType
             path: src/GezelServiceProvider.php

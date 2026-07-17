@@ -2,33 +2,39 @@
 
 use Illuminate\Http\Request;
 use Onomahq\Gezel\Http\Middleware\VerifyGezelServiceToken;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-it('404s when no config token is set', function () {
-    config()->set('gezel.middleware.service_token', null);
-
-    $request = Request::create('/x', 'POST');
-    $request->headers->set('Authorization', 'Bearer whatever');
-
-    (new VerifyGezelServiceToken)->handle($request, fn () => response('ok'));
-})->throws(NotFoundHttpException::class);
-
-it('404s on a wrong bearer', function () {
-    config()->set('gezel.middleware.service_token', 'correct-token');
-
-    $request = Request::create('/x', 'POST');
-    $request->headers->set('Authorization', 'Bearer wrong-token');
-
-    (new VerifyGezelServiceToken)->handle($request, fn () => response('ok'));
-})->throws(NotFoundHttpException::class);
-
-it('404s on a missing bearer', function () {
-    config()->set('gezel.middleware.service_token', 'correct-token');
+function refuseServiceToken(?string $configured, ?string $sent): array
+{
+    config()->set('gezel.middleware.service_token', $configured);
 
     $request = Request::create('/x', 'POST');
 
-    (new VerifyGezelServiceToken)->handle($request, fn () => response('ok'));
-})->throws(NotFoundHttpException::class);
+    if ($sent !== null) {
+        $request->headers->set('Authorization', "Bearer {$sent}");
+    }
+
+    $reached = false;
+
+    $response = (new VerifyGezelServiceToken)->handle($request, function () use (&$reached) {
+        $reached = true;
+
+        return response('ok');
+    });
+
+    return [$response, $reached];
+}
+
+it('refuses identically whether the token is unset, wrong, or missing', function (?string $configured, ?string $sent) {
+    [$response, $reached] = refuseServiceToken($configured, $sent);
+
+    expect($response->getStatusCode())->toBe(404);
+    expect($response->getData(true))->toBe(['error' => 'not found']);
+    expect($reached)->toBeFalse();
+})->with([
+    'no config token set' => [null, 'whatever'],
+    'wrong bearer' => ['correct-token', 'wrong-token'],
+    'missing bearer' => ['correct-token', null],
+]);
 
 it('passes through on a matching bearer', function () {
     config()->set('gezel.middleware.service_token', 'correct-token');

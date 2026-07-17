@@ -13,7 +13,7 @@ use Onomahq\Gezel\Support\Owner;
  * fresh bucket on every request by varying that field): a container-principal
  * request keys on the principal already resolved by upstream auth
  * middleware; a service-token request's `user_id` (a gezel_id) is only used
- * as a key once it resolves to a real owner row — anything that doesn't
+ * as a key once it resolves to a real owner row, and anything that doesn't
  * resolve collapses into one shared 'unresolved' bucket instead of getting
  * its own.
  */

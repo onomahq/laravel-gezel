@@ -21,17 +21,23 @@ function turnContextUri(): string
 }
 
 it('404s without the service token', function () {
-    $this->postJson(turnContextUri(), ['user_id' => 'whatever'])->assertNotFound();
+    $this->postJson(turnContextUri(), ['user_id' => 'whatever'])
+        ->assertNotFound()
+        ->assertExactJson(['error' => 'not found']);
 });
 
-it('returns turn_context null with a 404 status when the owner is not found', function () {
+it('refuses an unknown owner with the standard body, not a distinguishable turn_context', function () {
+    // Answering an unknown gezel_id differently from a bad token would make
+    // this an owner enumeration oracle for anyone holding the service token.
+    $badToken = $this->postJson(turnContextUri(), ['user_id' => 'x']);
+
     $this->withHeader('Authorization', 'Bearer the-service-token')
         ->postJson(turnContextUri(), ['user_id' => 'unknown-gezel-id'])
         ->assertNotFound()
-        ->assertJson(['turn_context' => null]);
+        ->assertExactJson($badToken->json());
 });
 
-it('resolves the owner by gezel_id and calls the bound TurnContextProvider — default answers null', function () {
+it('resolves the owner by gezel_id and calls the bound TurnContextProvider, whose default answers null', function () {
     $owner = GezelUser::create(['name' => 'Ada']);
     $owner->ensureGezelId();
 
@@ -44,7 +50,8 @@ it('resolves the owner by gezel_id and calls the bound TurnContextProvider — d
 it('404s a validation failure instead of returning 422', function () {
     $this->withHeader('Authorization', 'Bearer the-service-token')
         ->postJson(turnContextUri(), [])
-        ->assertNotFound();
+        ->assertNotFound()
+        ->assertExactJson(['error' => 'not found']);
 });
 
 it('passes a Viewing built from the request into the bound provider', function () {
