@@ -15,6 +15,7 @@ use Onomahq\Gezel\Console\Commands\GezelHealth;
 use Onomahq\Gezel\Console\Commands\ProvisionMissingContainers;
 use Onomahq\Gezel\Console\Commands\ReconcileContainerBearers;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
+use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Contracts\PrincipalVerifier;
 use Onomahq\Gezel\Contracts\StreamsGezelChat;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
@@ -75,7 +76,11 @@ class GezelServiceProvider extends PackageServiceProvider
             return;
         }
 
-        Owner::model()::created(fn (Model $owner) => ProvisionContainer::dispatch($owner));
+        Owner::model()::created(function (Model $owner): void {
+            if ($owner instanceof GezelOwner) {
+                ProvisionContainer::dispatch($owner);
+            }
+        });
     }
 
     /**

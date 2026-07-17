@@ -3,6 +3,7 @@
 namespace Onomahq\Gezel\Concerns;
 
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
+use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Exceptions\ContainerLifecycleDisabledException;
 use Onomahq\Gezel\GezelOrchestrator;
 
@@ -12,6 +13,8 @@ use Onomahq\Gezel\GezelOrchestrator;
  * ends the owner's lifetime: a `deleting` observer for a User owner, or the
  * dissolution path for a non-User owner (a Team can disband without any User
  * being deleted). No-ops when the owner was never provisioned.
+ *
+ * @phpstan-require-implements GezelOwner
  */
 trait DeprovisionsGezelContainer
 {

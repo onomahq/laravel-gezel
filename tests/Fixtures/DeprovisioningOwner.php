@@ -6,8 +6,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Onomahq\Gezel\Concerns\DeprovisionsGezelContainer;
 use Onomahq\Gezel\Concerns\HasGezelAgent;
+use Onomahq\Gezel\Contracts\GezelOwner;
 
-class DeprovisioningOwner extends Authenticatable
+class DeprovisioningOwner extends Authenticatable implements GezelOwner
 {
     use DeprovisionsGezelContainer;
     use HasApiTokens;

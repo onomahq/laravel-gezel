@@ -4,8 +4,9 @@ namespace Onomahq\Gezel\Tests\Fixtures;
 
 use Illuminate\Database\Eloquent\Model;
 use Onomahq\Gezel\Concerns\HasGezelAgent;
+use Onomahq\Gezel\Contracts\GezelOwner;
 
-class GezelTeam extends Model
+class GezelTeam extends Model implements GezelOwner
 {
     use HasGezelAgent;
 

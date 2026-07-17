@@ -3,8 +3,12 @@
 namespace Onomahq\Gezel\Concerns;
 
 use Illuminate\Support\Str;
+use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
 
+/**
+ * @phpstan-require-implements GezelOwner
+ */
 trait HasGezelAgent
 {
     public function initializeHasGezelAgent(): void

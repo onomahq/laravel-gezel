@@ -5,8 +5,9 @@ namespace Onomahq\Gezel\Tests\Fixtures;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Onomahq\Gezel\Concerns\HasGezelAgent;
+use Onomahq\Gezel\Contracts\GezelOwner;
 
-class SanctumOwner extends Authenticatable
+class SanctumOwner extends Authenticatable implements GezelOwner
 {
     use HasApiTokens;
     use HasGezelAgent;

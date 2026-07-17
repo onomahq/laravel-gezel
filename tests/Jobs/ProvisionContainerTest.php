@@ -1,7 +1,11 @@
 <?php
 
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
+use Onomahq\Gezel\GezelOrchestrator;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
 use Onomahq\Gezel\Tests\Fixtures\SanctumOwner;
 
@@ -62,6 +66,70 @@ it('swallows ContainerLifecycleDisabledException without stamping provisioned_at
     ProvisionContainer::dispatchSync($owner);
 
     expect($owner->fresh()->gezelProvisioned())->toBeFalse();
+});
+
+it('revokes the bearer it just minted when the middleware refuses container lifecycle', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    Http::fake([
+        'middleware.test/v1/containers/*/provision' => Http::response('Docker not running', 501),
+    ]);
+
+    ProvisionContainer::dispatchSync($owner);
+
+    expect($owner->tokens()->count())->toBe(0);
+});
+
+it('revokes the bearer it just minted and rethrows on any other provision failure', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    Http::fake([
+        'middleware.test/v1/containers/*/provision' => Http::response('boom', 500),
+    ]);
+
+    expect(fn () => (new ProvisionContainer($owner))->handle(
+        app(ContainerBearerIssuer::class),
+        app(GezelOrchestrator::class),
+    ))->toThrow(RequestException::class);
+
+    expect($owner->tokens()->count())->toBe(0);
+});
+
+it('does not leave a live bearer behind across repeated failed attempts', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    Http::fake([
+        'middleware.test/v1/containers/*/provision' => Http::response('boom', 500),
+    ]);
+
+    foreach (range(1, 3) as $attempt) {
+        try {
+            (new ProvisionContainer($owner))->handle(
+                app(ContainerBearerIssuer::class),
+                app(GezelOrchestrator::class),
+            );
+        } catch (RequestException) {
+            // expected on every attempt
+        }
+    }
+
+    expect($owner->tokens()->count())->toBe(0);
+});
+
+it('defers dispatch until after the enclosing transaction commits', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    expect((new ProvisionContainer($owner))->afterCommit)->toBeTrue();
+});
+
+it('is unique per owner and locks via the configured lock store', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    $job = new ProvisionContainer($owner);
+
+    expect($job->uniqueId())->toBe((string) $owner->getKey());
+    expect($job->uniqueVia())->toBeInstanceOf(Repository::class);
+    expect($job->uniqueFor())->toBeGreaterThan(0);
 });
 
 it('never carries the minted bearer in its serialized payload', function () {

@@ -20,7 +20,3 @@ parameters:
         -
             identifier: trait.unused
             path: src/Concerns/DeprovisionsGezelContainer.php
-        -
-            identifier: method.notFound
-            message: '#Call to an undefined method Illuminate\\Database\\Eloquent\\Model::(gezelProvisioned|ensureGezelId)\(\)#'
-            path: src/Jobs/ProvisionContainer.php

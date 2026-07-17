@@ -4,6 +4,7 @@ namespace Onomahq\Gezel\Support;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
+use Onomahq\Gezel\Contracts\GezelOwner;
 use RuntimeException;
 
 class Owner
@@ -30,6 +31,10 @@ class Owner
     {
         if (! class_exists($model)) {
             throw new RuntimeException("gezel.owner.model [{$model}] does not exist.");
+        }
+
+        if (! is_a($model, Model::class, true) || ! is_a($model, GezelOwner::class, true)) {
+            throw new RuntimeException("gezel.owner.model [{$model}] must be an Eloquent model implementing ".GezelOwner::class.'. Add the HasGezelAgent trait and `implements '.GezelOwner::class.'` to it.');
         }
 
         if (is_a($model, Authenticatable::class, true)) {

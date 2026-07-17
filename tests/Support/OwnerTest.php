@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Onomahq\Gezel\Support\Owner;
@@ -57,3 +58,14 @@ it('reports a missing owner model class distinctly from the shared memory guard'
 
     expect(fn () => Owner::model())->toThrow(RuntimeException::class, 'does not exist');
 });
+
+it('refuses an owner model that does not implement GezelOwner', function () {
+    config()->set('gezel.owner.model', OwnerTestModelWithoutGezelOwner::class);
+
+    expect(fn () => Owner::model())->toThrow(RuntimeException::class, 'GezelOwner');
+});
+
+class OwnerTestModelWithoutGezelOwner extends Model
+{
+    protected $table = 'users';
+}
