@@ -72,17 +72,41 @@ it('does nothing when every eligible owner already has a container', function ()
     Http::assertNothingSent();
 });
 
-it('re-provisions already-provisioned owners with --force', function () {
-    fakeProvisionSucceeds();
+it('reconciles already-provisioned owners with --force instead of re-provisioning', function () {
     config()->set('gezel.provisioning.strategy', 'manual');
 
     $owner = SanctumOwner::create(['name' => 'Ada']);
     $owner->ensureGezelId();
     $owner->forceFill(['gezel_provisioned_at' => now()])->save();
 
+    Http::fake([
+        "middleware.test/v1/containers/{$owner->gezel_id}/recreate" => Http::response([
+            'container_id' => 'c-abc',
+            'status' => 'provisioned',
+        ], 200),
+    ]);
+
+    $this->artisan('gezel:provision-missing', ['--force' => true])
+        ->expectsOutputToContain("Reconciled already-provisioned owner {$owner->getKey()}")
+        ->assertExitCode(0);
+
+    // Reconcile, not provision: the middleware answers AlreadyExists for a
+    // live container and never rewrites its config, so re-dispatching
+    // ProvisionContainer against it can't repair anything.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/provision'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/recreate'));
+    expect($owner->fresh()->gezelProvisioned())->toBeTrue();
+});
+
+it('still provisions a not-yet-provisioned owner normally under --force', function () {
+    fakeProvisionSucceeds();
+    config()->set('gezel.provisioning.strategy', 'manual');
+
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
     $this->artisan('gezel:provision-missing', ['--force' => true])->assertExitCode(0);
 
-    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/provision'));
     expect($owner->fresh()->gezelProvisioned())->toBeTrue();
 });
 

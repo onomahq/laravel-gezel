@@ -39,19 +39,37 @@ final class PassportIssuer implements ContainerBearerIssuer
         return $result->accessToken;
     }
 
+    /**
+     * A misconfigured owner model must fail loud here exactly like issue()
+     * does. Returning an empty list instead would make a misconfigured owner
+     * look "reconciled" while nothing was ever queried.
+     */
     public function activePrincipalIds(Model $owner): array
     {
         if (! method_exists($owner, 'tokens')) {
-            return [];
+            throw new RuntimeException(
+                sprintf('%s must use the %s trait to manage Gezel container bearers.', $owner::class, HasApiTokens::class)
+            );
         }
 
         return $owner->tokens()->where('name', self::TOKEN_NAME)->where('revoked', false)->pluck('id')->all();
     }
 
+    /**
+     * A misconfigured owner model must fail loud here exactly like issue()
+     * does. No-oping instead would make a misconfigured owner look
+     * "reconciled" while revoking nothing.
+     */
     public function revoke(Model $owner, array $principalIds): void
     {
-        if ($principalIds === [] || ! method_exists($owner, 'tokens')) {
+        if ($principalIds === []) {
             return;
+        }
+
+        if (! method_exists($owner, 'tokens')) {
+            throw new RuntimeException(
+                sprintf('%s must use the %s trait to manage Gezel container bearers.', $owner::class, HasApiTokens::class)
+            );
         }
 
         // Flagged, not deleted, matching PassportVerifier reading `revoked`
