@@ -20,6 +20,7 @@ return [
     'provisioning' => [
         'enabled' => env('GEZEL_PROVISIONING_ENABLED', true),
         'strategy' => 'opt-in',   // 'observer' (signup auto) | 'opt-in' (UI action) | 'manual'
+        'self_heal' => env('GEZEL_PROVISIONING_SELF_HEAL', false),  // hourly gezel:provision-missing
     ],
     'routes' => [
         'prefix' => 'api/v1/internal',

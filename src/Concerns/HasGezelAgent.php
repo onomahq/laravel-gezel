@@ -3,6 +3,7 @@
 namespace Onomahq\Gezel\Concerns;
 
 use Illuminate\Support\Str;
+use Onomahq\Gezel\Jobs\ProvisionContainer;
 
 trait HasGezelAgent
 {
@@ -33,8 +34,18 @@ trait HasGezelAgent
         return $this->gezel_opted_in_at !== null;
     }
 
+    /**
+     * Stamps opt-in always; only the 'opt-in' provisioning.strategy also
+     * dispatches ProvisionContainer here. The 'observer' strategy provisions
+     * from the owner model's `created` event instead, and 'manual' never
+     * dispatches on its own.
+     */
     public function optIntoGezel(): void
     {
         $this->forceFill(['gezel_opted_in_at' => now()])->save();
+
+        if (config('gezel.provisioning.enabled', true) && config('gezel.provisioning.strategy') === 'opt-in') {
+            ProvisionContainer::dispatch($this);
+        }
     }
 }
