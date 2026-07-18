@@ -42,6 +42,18 @@ class GezelHealth extends Command
             return self::FAILURE;
         }
 
+        // The middleware POSTs usage callbacks to the literal path
+        // /api/v1/internal/usage; a moved prefix means every metering event
+        // 404s and dead-letters permanently. Fail here, at deploy time, not
+        // silently in the ledger.
+        $prefix = trim((string) config('gezel.routes.prefix'), '/');
+
+        if (config('gezel.usage.enabled', true) && $prefix !== 'api/v1/internal') {
+            $this->error("The middleware posts usage callbacks to the hardcoded path /api/v1/internal/usage, but gezel.routes.prefix is '{$prefix}' — metering callbacks will 404 and dead-letter. Restore the prefix or set gezel.usage.enabled = false.");
+
+            return self::FAILURE;
+        }
+
         $owner = Owner::model()::query()
             ->whereNotNull('gezel_provisioned_at')
             ->whereNotNull('gezel_id')

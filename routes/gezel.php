@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Onomahq\Gezel\Http\Controllers\AgentMessagesController;
 use Onomahq\Gezel\Http\Controllers\PrincipalsVerifyController;
 use Onomahq\Gezel\Http\Controllers\TurnContextController;
+use Onomahq\Gezel\Http\Controllers\UsageController;
 use Onomahq\Gezel\Http\Middleware\AuthenticateGezelContainerPrincipal;
 use Onomahq\Gezel\Http\Middleware\VerifyGezelServiceToken;
 
@@ -51,4 +52,14 @@ Route::prefix(config('gezel.routes.prefix'))
                 ->withoutMiddleware('throttle:api')
                 ->name('turn-context');
         }
+
+        // Always registered, even with gezel.usage.enabled = false: the
+        // middleware POSTs its ledger to the literal path
+        // /api/v1/internal/usage (hardcoded Rust-side) and dead-letters
+        // permanently on 404, so an unregistered route silently destroys
+        // billing data. gezel:health asserts routes.prefix still lines up.
+        Route::post('/usage', UsageController::class)
+            ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-internal'])
+            ->withoutMiddleware('throttle:api')
+            ->name('usage');
     });

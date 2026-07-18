@@ -29,6 +29,24 @@ it('fails when middleware /health returns a non-2xx', function () {
     $this->artisan('gezel:health')->assertExitCode(1);
 });
 
+it('fails when the route prefix moved away from the hardcoded usage-callback path', function () {
+    Http::fake(['middleware.test/health' => Http::response(['docker' => true])]);
+    config()->set('gezel.routes.prefix', 'internal/gezel');
+
+    $this->artisan('gezel:health')
+        ->expectsOutputToContain('dead-letter')
+        ->assertExitCode(1);
+});
+
+it('tolerates a moved route prefix when usage is disabled', function () {
+    Http::fake(['middleware.test/health' => Http::response(['docker' => true])]);
+    config()->set('gezel.routes.prefix', 'internal/gezel');
+    config()->set('gezel.usage.enabled', false);
+
+    // No provisioned owner exists, so the command warns and succeeds.
+    $this->artisan('gezel:health')->assertExitCode(0);
+});
+
 it('fails when gezel.app_id is not configured', function () {
     config()->set('gezel.app_id', null);
 
