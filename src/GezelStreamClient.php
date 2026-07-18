@@ -132,7 +132,9 @@ class GezelStreamClient implements StreamsGezelChat
         return [
             CURLOPT_URL => $this->streamUrl($request->gezelId),
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($request->toEnvelope()),
+            // INVALID_UTF8_SUBSTITUTE: an attachment filename with broken UTF-8
+            // must not collapse the whole envelope to `false` (an empty body).
+            CURLOPT_POSTFIELDS => (string) json_encode($request->toEnvelope(), JSON_INVALID_UTF8_SUBSTITUTE),
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer '.config('gezel.middleware.app_token'),
                 'Content-Type: application/json',

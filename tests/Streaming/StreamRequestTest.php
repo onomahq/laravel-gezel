@@ -42,3 +42,12 @@ it('omits empty-string persona_id and turn_context', function () {
     expect($envelope)->not->toHaveKey('persona_id');
     expect($envelope)->not->toHaveKey('turn_context');
 });
+
+it('carries attachments in the envelope only when present', function () {
+    $attachment = ['kind' => 'image', 'mime' => 'image/png', 'filename' => 'foto.png', 'data_b64' => 'aGk='];
+
+    $envelope = (new StreamRequest('gezel-1', 'chat-1', 'hello', attachments: [$attachment]))->toEnvelope();
+
+    expect($envelope['attachments'])->toBe([$attachment])
+        ->and((new StreamRequest('gezel-1', 'chat-1', 'hello'))->toEnvelope())->not->toHaveKey('attachments');
+});

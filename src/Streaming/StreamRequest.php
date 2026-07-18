@@ -9,12 +9,18 @@ namespace Onomahq\Gezel\Streaming;
  */
 final readonly class StreamRequest
 {
+    /**
+     * @param  list<array<string, mixed>>  $attachments  Gateway AttachmentPayload
+     *                                                   entries (kind, mime, filename,
+     *                                                   data_b64, transcript, note).
+     */
     public function __construct(
         public string $gezelId,
         public string $externalChatId,
         public string $text,
         public ?string $personaId = null,
         public ?string $turnContext = null,
+        public array $attachments = [],
     ) {}
 
     /**
@@ -35,6 +41,10 @@ final readonly class StreamRequest
 
         if ($this->turnContext !== null && $this->turnContext !== '') {
             $envelope['turn_context'] = $this->turnContext;
+        }
+
+        if ($this->attachments !== []) {
+            $envelope['attachments'] = $this->attachments;
         }
 
         return $envelope;
