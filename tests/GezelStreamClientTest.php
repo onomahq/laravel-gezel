@@ -163,3 +163,17 @@ it('clears a stale stop flag when a new turn starts', function () {
 
     expect(Cache::get('gezel:stagent:stop:gezel-1:chat-1'))->toBeNull();
 });
+
+it('keeps the envelope encodable when an attachment filename carries broken UTF-8', function () {
+    $options = streamCurlOptions(new StreamRequest(
+        gezelId: 'gezel-1',
+        externalChatId: 'chat-1',
+        text: 'hello',
+        attachments: [['kind' => 'document', 'mime' => 'application/pdf', 'filename' => "rapport-\xC3.pdf", 'data_b64' => 'aGk=']],
+    ));
+
+    $decoded = json_decode($options[CURLOPT_POSTFIELDS], true);
+
+    expect($options[CURLOPT_POSTFIELDS])->not->toBe('')
+        ->and($decoded['attachments'][0]['data_b64'])->toBe('aGk=');
+});
