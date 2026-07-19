@@ -19,6 +19,7 @@ function fakeProvisionSucceeds(): void
             'container_id' => 'c-abc',
             'status' => 'provisioned',
         ], 200),
+        'middleware.test/v1/containers/*/config' => Http::response(['pushed' => true]),
     ]);
 }
 
@@ -39,7 +40,8 @@ it('provisions every owner lacking a container under a non-opt-in strategy', fun
     $this->artisan('gezel:provision-missing')->assertExitCode(0);
 
     expect($unprovisioned->fresh()->gezelProvisioned())->toBeTrue();
-    Http::assertSentCount(1);
+    // Provision + the usage-config push that follows it; nothing for Grace.
+    Http::assertSentCount(2);
 });
 
 it('only considers opted-in owners under the opt-in strategy', function () {
@@ -54,7 +56,8 @@ it('only considers opted-in owners under the opt-in strategy', function () {
 
     expect($optedIn->fresh()->gezelProvisioned())->toBeTrue();
     expect($notOptedIn->fresh()->gezelProvisioned())->toBeFalse();
-    Http::assertSentCount(1);
+    // Provision + the usage-config push that follows it.
+    Http::assertSentCount(2);
 });
 
 it('does nothing when every eligible owner already has a container', function () {

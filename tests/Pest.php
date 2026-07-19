@@ -26,6 +26,16 @@ function migrateGezelOwnerTable(string $ownerModelClass): void
 }
 
 /**
+ * Runs the real add_gezel_usage migration stub: usage_cap_usd on the owner
+ * table plus the gezel_usage_events ledger. Requires migrateGezelOwnerTable()
+ * to have run first.
+ */
+function migrateGezelUsageTables(): void
+{
+    (include __DIR__.'/../database/migrations/add_gezel_usage.php.stub')->up();
+}
+
+/**
  * Runs Sanctum's real create_personal_access_tokens_table migration so
  * driver tests exercise actual PAT lookup, not a fake.
  *

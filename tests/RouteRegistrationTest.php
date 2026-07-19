@@ -37,7 +37,14 @@ it('registers turn-context once the app opts in', function () {
 it('always registers the routes that are not opt-in', function () {
     expect(gezelRouteNames(false))
         ->toContain('gezel.agent-messages')
-        ->toContain('gezel.principals.verify');
+        ->toContain('gezel.principals.verify')
+        ->toContain('gezel.usage');
+});
+
+it('registers the usage route even with usage disabled, so callbacks never 404 into the dead-letter queue', function () {
+    config()->set('gezel.usage.enabled', false);
+
+    expect(gezelRouteNames(false))->toContain('gezel.usage');
 });
 
 it('names every route under the gezel. prefix the validation rescue keys on', function () {

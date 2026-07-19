@@ -1,0 +1,59 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+// Change 'users' below if gezel.owner.model points at another table.
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Guarded: an app that hand-rolled usage before this module (Onoma)
+        // already has the column, and "column already exists" would fail its
+        // adoption at migrate time.
+        if (! Schema::hasColumn('users', 'usage_cap_usd')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->decimal('usage_cap_usd', 10, 2)->nullable();
+            });
+        }
+
+        Schema::create('gezel_usage_events', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('event_id')->unique();
+            // The middleware-facing owner key, exactly as it arrived on the
+            // callback. A string, not a uuid column type: a malformed value
+            // must land in the ledger, not bounce the insert into the
+            // middleware's retry loop.
+            $table->string('gezel_id')->nullable();
+            $table->string('source')->nullable();
+            $table->string('provider')->nullable();
+            $table->string('model')->nullable();
+            $table->string('phase')->nullable();
+            $table->unsignedBigInteger('input_tokens')->default(0);
+            $table->unsignedBigInteger('output_tokens')->default(0);
+            $table->unsignedBigInteger('cache_creation_tokens')->default(0);
+            $table->unsignedBigInteger('cache_read_tokens')->default(0);
+            $table->decimal('cost_usd', 16, 8)->default(0);
+            $table->unsignedInteger('pricing_version')->nullable();
+            $table->timestamp('occurred_at')->nullable();
+            $table->json('context')->nullable();
+            $table->timestamp('created_at')->nullable();
+
+            // The query this ledger exists to serve: sum cost for one owner
+            // over a period. The composite covers plain gezel_id lookups as
+            // its prefix.
+            $table->index(['gezel_id', 'occurred_at']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('gezel_usage_events');
+
+        // usage_cap_usd is deliberately not dropped: this migration cannot
+        // tell a column it created from one an app (Onoma) had before
+        // adopting the module, and a stray nullable column is cheaper than
+        // deleting live per-user caps on rollback.
+    }
+};

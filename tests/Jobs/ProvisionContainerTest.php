@@ -9,9 +9,11 @@ use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\GezelOrchestrator;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
 use Onomahq\Gezel\Tests\Fixtures\SanctumOwner;
+use Onomahq\Gezel\Usage\UsageConfigSync;
 
 beforeEach(function () {
     migrateGezelOwnerTable(SanctumOwner::class);
+    migrateGezelUsageTables();
     migratePersonalAccessTokensTable();
 
     config()->set('gezel.middleware.url', 'http://middleware.test');
@@ -19,11 +21,12 @@ beforeEach(function () {
 });
 
 afterEach(function () {
+    Schema::dropIfExists('gezel_usage_events');
     Schema::dropIfExists('users');
     Schema::dropIfExists('personal_access_tokens');
 });
 
-it('mints a bearer, provisions, and stamps gezel_provisioned_at', function () {
+it('mints a bearer, provisions, stamps gezel_provisioned_at, and pushes the usage config', function () {
     $owner = SanctumOwner::create(['name' => 'Ada']);
 
     Http::fake([
@@ -31,6 +34,7 @@ it('mints a bearer, provisions, and stamps gezel_provisioned_at', function () {
             'container_id' => 'c-abc',
             'status' => 'provisioned',
         ], 200),
+        'middleware.test/v1/containers/*/config' => Http::response(['pushed' => true]),
     ]);
 
     ProvisionContainer::dispatchSync($owner);
@@ -43,9 +47,31 @@ it('mints a bearer, provisions, and stamps gezel_provisioned_at', function () {
             && $request->hasHeader('Authorization', 'Bearer app-token-123')
             && filled($request['container_token']);
     });
+
+    Http::assertSent(function ($request) use ($owner) {
+        return $request->url() === "http://middleware.test/v1/containers/{$owner->fresh()->gezel_id}/config"
+            && isset($request['payload']['usage']['monthly_cap_usd']);
+    });
 });
 
-it('no-ops when the owner is already provisioned', function () {
+it('refreshes only the usage config when the owner is already provisioned', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+    $owner->forceFill(['gezel_provisioned_at' => now()])->save();
+
+    Http::fake([
+        'middleware.test/v1/containers/*/config' => Http::response(['pushed' => true]),
+    ]);
+
+    ProvisionContainer::dispatchSync($owner);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/config'));
+});
+
+it('skips even the usage push on an already-provisioned re-run when usage is disabled', function () {
+    config()->set('gezel.usage.enabled', false);
+
     $owner = SanctumOwner::create(['name' => 'Ada']);
     $owner->ensureGezelId();
     $owner->forceFill(['gezel_provisioned_at' => now()])->save();
@@ -91,6 +117,7 @@ it('revokes the bearer it just minted and rethrows on any other provision failur
     expect(fn () => (new ProvisionContainer($owner))->handle(
         app(ContainerBearerIssuer::class),
         app(GezelOrchestrator::class),
+        app(UsageConfigSync::class),
     ))->toThrow(RequestException::class);
 
     expect($owner->tokens()->count())->toBe(0);
@@ -108,6 +135,7 @@ it('does not leave a live bearer behind across repeated failed attempts', functi
             (new ProvisionContainer($owner))->handle(
                 app(ContainerBearerIssuer::class),
                 app(GezelOrchestrator::class),
+                app(UsageConfigSync::class),
             );
         } catch (RequestException) {
             // expected on every attempt
@@ -133,7 +161,7 @@ it('never revokes a bearer that already existed before this attempt minted its o
     ]);
 
     try {
-        (new ProvisionContainer($owner))->handle($issuer, app(GezelOrchestrator::class));
+        (new ProvisionContainer($owner))->handle($issuer, app(GezelOrchestrator::class), app(UsageConfigSync::class));
     } catch (RequestException) {
         // expected
     }

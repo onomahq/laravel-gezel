@@ -21,6 +21,7 @@ use Onomahq\Gezel\Auth\PrincipalGate;
 use Onomahq\Gezel\Console\Commands\GezelHealth;
 use Onomahq\Gezel\Console\Commands\ProvisionMissingContainers;
 use Onomahq\Gezel\Console\Commands\ReconcileContainerBearers;
+use Onomahq\Gezel\Console\Commands\SyncUsageConfig;
 use Onomahq\Gezel\Contracts\AgentMessageHandler;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\GezelOwner;
@@ -56,11 +57,12 @@ class GezelServiceProvider extends PackageServiceProvider
             ->name('laravel-gezel')
             ->hasConfigFile()
             ->hasRoute('gezel')
-            ->hasMigration('add_gezel_columns')
+            ->hasMigrations(['add_gezel_columns', 'add_gezel_usage'])
             ->hasCommands([
                 ProvisionMissingContainers::class,
                 ReconcileContainerBearers::class,
                 GezelHealth::class,
+                SyncUsageConfig::class,
             ]);
     }
 

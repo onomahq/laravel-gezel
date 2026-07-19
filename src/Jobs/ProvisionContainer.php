@@ -17,6 +17,7 @@ use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Exceptions\ContainerLifecycleDisabledException;
 use Onomahq\Gezel\GezelOrchestrator;
+use Onomahq\Gezel\Usage\UsageConfigSync;
 use Throwable;
 
 /**
@@ -76,9 +77,15 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
         return ((int) config('gezel.timeout', 120) + 30) * $this->tries;
     }
 
-    public function handle(ContainerBearerIssuer $issuer, GezelOrchestrator $orchestrator): void
+    public function handle(ContainerBearerIssuer $issuer, GezelOrchestrator $orchestrator, UsageConfigSync $usageSync): void
     {
         if ($this->owner->gezelProvisioned()) {
+            // The container exists but the middleware enforces metering
+            // fail-closed, so a re-run's one useful act is refreshing the
+            // usage config (a cap change, a pricing bump, or a fleet that
+            // provisioned before enforcement existed).
+            $this->syncUsageConfig($usageSync);
+
             return;
         }
 
@@ -108,11 +115,25 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
 
         $this->owner->forceFill(['gezel_provisioned_at' => now()])->save();
 
+        // After the provisioned_at save: a sync failure now throws into the
+        // job's retry, and the retry lands in the already-provisioned branch
+        // above, which re-syncs without re-provisioning.
+        $this->syncUsageConfig($usageSync);
+
         Log::info('Gezel container provisioned', [
             'owner_id' => $this->owner->getKey(),
             'gezel_id' => $gezelId,
             'container_id' => $container->containerId,
         ]);
+    }
+
+    private function syncUsageConfig(UsageConfigSync $usageSync): void
+    {
+        if (! config('gezel.usage.enabled', true)) {
+            return;
+        }
+
+        $usageSync->sync($this->owner);
     }
 
     public function failed(Throwable $exception): void
