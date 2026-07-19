@@ -25,7 +25,7 @@ class UsageConfigSync
 
     public function sync(Model&GezelOwner $owner): void
     {
-        $gezelId = $owner->gezel_id;
+        $gezelId = $owner->getAttribute('gezel_id');
 
         if (! is_string($gezelId) || $gezelId === '') {
             return;
@@ -41,7 +41,7 @@ class UsageConfigSync
     {
         return [
             'usage' => [
-                'monthly_cap_usd' => (float) ($owner->usage_cap_usd ?? config('gezel.usage.monthly_cap_usd', 20)),
+                'monthly_cap_usd' => (float) ($owner->getAttribute('usage_cap_usd') ?? config('gezel.usage.monthly_cap_usd', 20)),
                 'pricing_version' => (int) config('gezel.usage.pricing.version', 1),
                 'prices' => config('gezel.usage.pricing.models', []),
             ],
