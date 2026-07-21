@@ -43,28 +43,6 @@ return [
     ],
     'usage' => [
         'enabled' => env('GEZEL_USAGE_ENABLED', true),  // gates the config push (provision hook + gezel:sync-usage-config); the callback route stays registered regardless so events never 404 into the middleware's dead-letter queue
-        'monthly_cap_usd' => env('GEZEL_USAGE_MONTHLY_CAP_USD', 20),  // default cap; per-owner override via the usage_cap_usd column
-        'pricing' => [
-            'version' => 1,  // bump when you change the models map; echoed back on usage callbacks for drift diagnosis
-            // USD per million tokens, keyed "provider/model". The middleware
-            // matches exact keys first, then the longest key that is a prefix
-            // of the requested model (family match). An unknown model bills at
-            // the priciest known rate and is flagged, so keep the expensive
-            // models listed even if you never route to them.
-            'models' => [
-                'anthropic/claude-opus-4-8' => ['input_per_million' => 15.0, 'output_per_million' => 75.0, 'cache_write_per_million' => 18.75, 'cache_read_per_million' => 1.5],
-                'anthropic/claude-opus-4' => ['input_per_million' => 15.0, 'output_per_million' => 75.0, 'cache_write_per_million' => 18.75, 'cache_read_per_million' => 1.5],
-                'anthropic/claude-sonnet-5' => ['input_per_million' => 3.0, 'output_per_million' => 15.0, 'cache_write_per_million' => 3.75, 'cache_read_per_million' => 0.3],
-                'anthropic/claude-sonnet-4' => ['input_per_million' => 3.0, 'output_per_million' => 15.0, 'cache_write_per_million' => 3.75, 'cache_read_per_million' => 0.3],
-                'anthropic/claude-haiku-4-5' => ['input_per_million' => 1.0, 'output_per_million' => 5.0, 'cache_write_per_million' => 1.25, 'cache_read_per_million' => 0.1],
-                'anthropic/claude-3-5-haiku' => ['input_per_million' => 0.8, 'output_per_million' => 4.0, 'cache_write_per_million' => 1.0, 'cache_read_per_million' => 0.08],
-                'openai/gpt-4o' => ['input_per_million' => 2.5, 'output_per_million' => 10.0],
-                'openai/gpt-4o-mini' => ['input_per_million' => 0.15, 'output_per_million' => 0.6],
-                'openai/gpt-4.1' => ['input_per_million' => 2.0, 'output_per_million' => 8.0],
-                'openai/gpt-4.1-mini' => ['input_per_million' => 0.4, 'output_per_million' => 1.6],
-                'openai/gpt-4.1-nano' => ['input_per_million' => 0.1, 'output_per_million' => 0.4],
-                'openai/text-embedding-3-small' => ['input_per_million' => 0.02, 'output_per_million' => 0.0],
-            ],
-        ],
+        'monthly_token_cap' => env('GEZEL_USAGE_MONTHLY_TOKEN_CAP', 6000000),  // default cap in input+output tokens; per-owner override via the usage_token_cap column
     ],
 ];

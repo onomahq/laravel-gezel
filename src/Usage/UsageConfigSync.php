@@ -7,9 +7,9 @@ use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\GezelOrchestrator;
 
 /**
- * Pushes an owner's usage config (cap + pricing) to the middleware, which
- * enforces metering fail-closed: an owner without a pushed config gets a 503
- * on every agent turn and transcription.
+ * Pushes an owner's monthly token cap to the middleware, which enforces
+ * metering fail-closed: an owner without a pushed config gets a 503 on every
+ * agent turn and transcription.
  *
  * Deliberately no transaction or row lock around the push: the version is a
  * microsecond timestamp, so it is monotonic by construction, and the
@@ -35,15 +35,13 @@ class UsageConfigSync
     }
 
     /**
-     * @return array{usage: array{monthly_cap_usd: float, pricing_version: int, prices: array<string, array<string, float>>}}
+     * @return array{usage: array{monthly_token_cap: int}}
      */
     public function payload(Model&GezelOwner $owner): array
     {
         return [
             'usage' => [
-                'monthly_cap_usd' => (float) ($owner->getAttribute('usage_cap_usd') ?? config('gezel.usage.monthly_cap_usd', 20)),
-                'pricing_version' => (int) config('gezel.usage.pricing.version', 1),
-                'prices' => config('gezel.usage.pricing.models', []),
+                'monthly_token_cap' => (int) ($owner->getAttribute('usage_token_cap') ?? config('gezel.usage.monthly_token_cap', 6000000)),
             ],
         ];
     }

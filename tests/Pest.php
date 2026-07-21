@@ -26,7 +26,7 @@ function migrateGezelOwnerTable(string $ownerModelClass): void
 }
 
 /**
- * Runs the real add_gezel_usage migration stub: usage_cap_usd on the owner
+ * Runs the real add_gezel_usage migration stub: usage_token_cap on the owner
  * table plus the gezel_usage_events ledger. Requires migrateGezelOwnerTable()
  * to have run first.
  */

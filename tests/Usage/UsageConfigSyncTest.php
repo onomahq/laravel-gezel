@@ -27,24 +27,26 @@ it('pushes the usage payload to the container config endpoint with a microsecond
 
     Http::assertSent(function ($request) use ($gezelId) {
         $body = $request->data();
+        $usage = $body['payload']['usage'];
 
         return $request->url() === "http://middleware.test/v1/containers/{$gezelId}/config"
             && $body['version'] > 1_000_000_000_000_000  // microsecond epoch, not seconds
-            && $body['payload']['usage']['monthly_cap_usd'] === 20.0
-            && $body['payload']['usage']['pricing_version'] === 1
-            && array_key_exists('anthropic/claude-sonnet-5', $body['payload']['usage']['prices']);
+            && $usage['monthly_token_cap'] === 6000000
+            && ! array_key_exists('monthly_cap_usd', $usage)
+            && ! array_key_exists('pricing_version', $usage)
+            && ! array_key_exists('prices', $usage);
     });
 });
 
 it('prefers the per-owner cap override over the configured default', function () {
     Http::fake(['http://middleware.test/*' => Http::response(['pushed' => true])]);
 
-    $owner = GezelUser::create(['name' => 'Ada', 'usage_cap_usd' => 55.5]);
+    $owner = GezelUser::create(['name' => 'Ada', 'usage_token_cap' => 9000000]);
     $owner->ensureGezelId();
 
     app(UsageConfigSync::class)->sync($owner->refresh());
 
-    Http::assertSent(fn ($request) => $request->data()['payload']['usage']['monthly_cap_usd'] === 55.5);
+    Http::assertSent(fn ($request) => $request->data()['payload']['usage']['monthly_token_cap'] === 9000000);
 });
 
 it('is a no-op for an owner without a gezel_id', function () {
@@ -82,7 +84,7 @@ it('strictly increases the version across sequential syncs, which the no-lock de
 
 it('falls back to the configured default cap when the usage migration has not run yet', function () {
     // Staged adoption: package upgraded, add_gezel_usage not yet migrated.
-    Schema::table('users', fn ($table) => $table->dropColumn('usage_cap_usd'));
+    Schema::table('users', fn ($table) => $table->dropColumn('usage_token_cap'));
 
     Http::fake(['http://middleware.test/*' => Http::response(['pushed' => true])]);
 
@@ -91,5 +93,5 @@ it('falls back to the configured default cap when the usage migration has not ru
 
     app(UsageConfigSync::class)->sync($owner->refresh());
 
-    Http::assertSent(fn ($request) => $request->data()['payload']['usage']['monthly_cap_usd'] === 20.0);
+    Http::assertSent(fn ($request) => $request->data()['payload']['usage']['monthly_token_cap'] === 6000000);
 });

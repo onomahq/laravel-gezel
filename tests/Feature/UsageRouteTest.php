@@ -37,7 +37,7 @@ it('records a delivered event', function () {
             'input_tokens' => 42,
             'output_tokens' => 0,
             'occurred_at' => '2026-07-18T21:00:00Z',
-            'context' => ['cost_usd_local' => 0.002, 'unit' => 'duration_seconds'],
+            'context' => ['unit' => 'duration_seconds'],
         ])
         ->assertOk()
         ->assertExactJson(['status' => 'recorded']);
@@ -45,7 +45,7 @@ it('records a delivered event', function () {
     $event = GezelUsageEvent::query()->sole();
 
     expect($event->source)->toBe('transcribe')
-        ->and($event->cost_usd)->toBe(0.002)
+        ->and($event->input_tokens)->toBe(42)
         ->and($event->context)->toMatchArray(['unit' => 'duration_seconds']);
 });
 
