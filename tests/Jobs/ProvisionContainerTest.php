@@ -50,7 +50,7 @@ it('mints a bearer, provisions, stamps gezel_provisioned_at, and pushes the usag
 
     Http::assertSent(function ($request) use ($owner) {
         return $request->url() === "http://middleware.test/v1/containers/{$owner->fresh()->gezel_id}/config"
-            && isset($request['payload']['usage']['monthly_cap_usd']);
+            && isset($request['payload']['usage']['monthly_token_cap']);
     });
 });
 

@@ -82,8 +82,8 @@ class ProvisionContainer implements ShouldBeUnique, ShouldQueue
         if ($this->owner->gezelProvisioned()) {
             // The container exists but the middleware enforces metering
             // fail-closed, so a re-run's one useful act is refreshing the
-            // usage config (a cap change, a pricing bump, or a fleet that
-            // provisioned before enforcement existed).
+            // token cap (a cap change, or a fleet that provisioned before
+            // enforcement existed).
             $this->syncUsageConfig($usageSync);
 
             return;

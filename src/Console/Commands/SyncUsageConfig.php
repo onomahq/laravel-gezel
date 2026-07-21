@@ -9,17 +9,17 @@ use Onomahq\Gezel\Usage\UsageConfigSync;
 use Throwable;
 
 /**
- * Bulk backfill: pushes the usage config (cap + pricing) for every
- * provisioned owner. The provision hook covers new owners; this covers a
- * pricing/cap change that must reach the whole fleet, and un-bricks a fleet
- * that provisioned before the middleware started enforcing metering.
+ * Bulk backfill: pushes the monthly token cap for every provisioned owner.
+ * The provision hook covers new owners; this covers a cap change that must
+ * reach the whole fleet, and un-bricks a fleet that provisioned before the
+ * middleware started enforcing metering.
  */
 class SyncUsageConfig extends Command
 {
     protected $signature = 'gezel:sync-usage-config
         {--owner-id= : Sync a single owner by primary key}';
 
-    protected $description = 'Push the usage config (cap + pricing) to the middleware for every provisioned owner.';
+    protected $description = 'Push the monthly token cap to the middleware for every provisioned owner.';
 
     public function handle(UsageConfigSync $sync): int
     {

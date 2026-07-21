@@ -26,8 +26,6 @@ class GezelUsageEvent extends Model
         'output_tokens' => 'integer',
         'cache_creation_tokens' => 'integer',
         'cache_read_tokens' => 'integer',
-        'cost_usd' => 'float',
-        'pricing_version' => 'integer',
         'occurred_at' => 'datetime',
         'context' => 'array',
     ];

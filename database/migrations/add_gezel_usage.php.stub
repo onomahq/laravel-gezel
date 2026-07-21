@@ -12,9 +12,10 @@ return new class extends Migration
         // Guarded: an app that hand-rolled usage before this module (Onoma)
         // already has the column, and "column already exists" would fail its
         // adoption at migrate time.
-        if (! Schema::hasColumn('users', 'usage_cap_usd')) {
+        if (! Schema::hasColumn('users', 'usage_token_cap')) {
             Schema::table('users', function (Blueprint $table) {
-                $table->decimal('usage_cap_usd', 10, 2)->nullable();
+                // Per-owner monthly token cap (input+output). null = default.
+                $table->unsignedBigInteger('usage_token_cap')->nullable();
             });
         }
 
@@ -34,13 +35,11 @@ return new class extends Migration
             $table->unsignedBigInteger('output_tokens')->default(0);
             $table->unsignedBigInteger('cache_creation_tokens')->default(0);
             $table->unsignedBigInteger('cache_read_tokens')->default(0);
-            $table->decimal('cost_usd', 16, 8)->default(0);
-            $table->unsignedInteger('pricing_version')->nullable();
             $table->timestamp('occurred_at')->nullable();
             $table->json('context')->nullable();
             $table->timestamp('created_at')->nullable();
 
-            // The query this ledger exists to serve: sum cost for one owner
+            // The query this ledger exists to serve: sum tokens for one owner
             // over a period. The composite covers plain gezel_id lookups as
             // its prefix.
             $table->index(['gezel_id', 'occurred_at']);
@@ -51,7 +50,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('gezel_usage_events');
 
-        // usage_cap_usd is deliberately not dropped: this migration cannot
+        // usage_token_cap is deliberately not dropped: this migration cannot
         // tell a column it created from one an app (Onoma) had before
         // adopting the module, and a stray nullable column is cheaper than
         // deleting live per-user caps on rollback.
