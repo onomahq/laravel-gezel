@@ -23,6 +23,7 @@ use Onomahq\Gezel\Console\Commands\ProvisionMissingContainers;
 use Onomahq\Gezel\Console\Commands\ReconcileContainerBearers;
 use Onomahq\Gezel\Console\Commands\SyncUsageConfig;
 use Onomahq\Gezel\Contracts\AgentMessageHandler;
+use Onomahq\Gezel\Contracts\ComputeUsageRecorder;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
 use Onomahq\Gezel\Contracts\GezelOwner;
 use Onomahq\Gezel\Contracts\OwnerMembershipVerifier;
@@ -35,6 +36,7 @@ use Onomahq\Gezel\Defaults\AlwaysAllowMembershipVerifier;
 use Onomahq\Gezel\Defaults\DeniesUnverifiableTargets;
 use Onomahq\Gezel\Defaults\FiresGezelAgentMessageReceived;
 use Onomahq\Gezel\Defaults\NullTurnContextProvider;
+use Onomahq\Gezel\Defaults\RecordsComputeUsageToGezelLedger;
 use Onomahq\Gezel\Http\GezelRefusal;
 use Onomahq\Gezel\Http\RateLimitKeyResolver;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
@@ -85,6 +87,11 @@ class GezelServiceProvider extends PackageServiceProvider
 
         // bindIf so an app that already registered its own implementation,
         // e.g. Onoma broadcasting AgentMessage over Reverb, keeps it.
+        // An app with its own token ledger (Onoma's `token_usage`) binds its
+        // own recorder; the default keeps compute usage in the package's
+        // gezel_usage_events, alongside the middleware's own callback rows.
+        $this->app->bindIf(ComputeUsageRecorder::class, RecordsComputeUsageToGezelLedger::class);
+
         $this->app->bindIf(AgentMessageHandler::class, FiresGezelAgentMessageReceived::class);
         $this->app->bindIf(TurnContextProvider::class, NullTurnContextProvider::class);
         $this->app->bindIf(OwnerMembershipVerifier::class, AlwaysAllowMembershipVerifier::class);
