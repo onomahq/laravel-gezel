@@ -84,6 +84,30 @@ class GezelOrchestrator
         $response->throw();
     }
 
+    /**
+     * The middleware's own view of an owner's month-to-date usage. It is the
+     * cap authority, so this is the authoritative number: an app's ledger only
+     * holds the events whose callbacks it received, and a dead-lettered
+     * callback would make that ledger read low exactly when the cap bites.
+     *
+     * @param  string  $month  `YYYY-MM`
+     * @return array<string, mixed>
+     */
+    public function usageStatus(string $gezelId, string $month): array
+    {
+        $response = $this->middleware()->get($this->containerPath($gezelId).'/usage/status', [
+            'month' => $month,
+        ]);
+
+        $this->guardLifecycleDisabled($response, $gezelId);
+
+        $response->throw();
+
+        $status = $response->json();
+
+        return is_array($status) ? $status : [];
+    }
+
     protected function containerInfoFrom(Response $response, string $gezelId, string $action): ContainerInfo
     {
         $this->guardLifecycleDisabled($response, $gezelId);
