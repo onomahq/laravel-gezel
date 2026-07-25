@@ -29,5 +29,5 @@ interface ComputeUsageRecorder
      *     context?: array<string, mixed>,
      * }  $event
      */
-    public function record(array $event): void;
+    public function record(array $event);
 }

@@ -41,6 +41,6 @@ final class SanctumVerifier implements PrincipalVerifier
             revoked: false, // Sanctum tokens are deleted on revoke, not flagged; a lookup hit means live.
             expiresAt: $expiresAt?->toImmutable(),
             scopes: $token->abilities ?? [],
-        ), SanctumIssuer::TOKEN_NAME);
+        ), SanctumIssuer::tokenName());
     }
 }

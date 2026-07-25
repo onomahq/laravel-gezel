@@ -4,6 +4,7 @@ namespace Onomahq\Gezel\Usage;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Onomahq\Gezel\Contracts\ComputeUsageRecorder;
 use Onomahq\Gezel\Models\GezelUsageEvent;
 use Throwable;
 
@@ -19,7 +20,7 @@ use Throwable;
  * cap authority and enforces on input+output tokens; the package just keeps
  * the token ledger for reporting.
  */
-class UsageRecorder
+class UsageRecorder implements ComputeUsageRecorder
 {
     /**
      * @param  array<string, mixed>  $event

@@ -36,12 +36,12 @@ use Onomahq\Gezel\Defaults\AlwaysAllowMembershipVerifier;
 use Onomahq\Gezel\Defaults\DeniesUnverifiableTargets;
 use Onomahq\Gezel\Defaults\FiresGezelAgentMessageReceived;
 use Onomahq\Gezel\Defaults\NullTurnContextProvider;
-use Onomahq\Gezel\Defaults\RecordsComputeUsageToGezelLedger;
 use Onomahq\Gezel\Http\GezelRefusal;
 use Onomahq\Gezel\Http\RateLimitKeyResolver;
 use Onomahq\Gezel\Jobs\ProvisionContainer;
 use Onomahq\Gezel\Mcp\GezelMcpServer;
 use Onomahq\Gezel\Support\Owner;
+use Onomahq\Gezel\Usage\UsageRecorder;
 use RuntimeException;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -85,13 +85,13 @@ class GezelServiceProvider extends PackageServiceProvider
             default => $this->bindCustomAuth($driver),
         };
 
+        // An app with its own token ledger (Onoma's `token_usage`) binds that
+        // recorder here instead; the default keeps compute usage in
+        // gezel_usage_events, alongside the middleware's own callback rows.
+        $this->app->bindIf(ComputeUsageRecorder::class, UsageRecorder::class);
+
         // bindIf so an app that already registered its own implementation,
         // e.g. Onoma broadcasting AgentMessage over Reverb, keeps it.
-        // An app with its own token ledger (Onoma's `token_usage`) binds its
-        // own recorder; the default keeps compute usage in the package's
-        // gezel_usage_events, alongside the middleware's own callback rows.
-        $this->app->bindIf(ComputeUsageRecorder::class, RecordsComputeUsageToGezelLedger::class);
-
         $this->app->bindIf(AgentMessageHandler::class, FiresGezelAgentMessageReceived::class);
         $this->app->bindIf(TurnContextProvider::class, NullTurnContextProvider::class);
         $this->app->bindIf(OwnerMembershipVerifier::class, AlwaysAllowMembershipVerifier::class);

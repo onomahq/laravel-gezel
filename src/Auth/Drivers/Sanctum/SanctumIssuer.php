@@ -19,8 +19,20 @@ final class SanctumIssuer implements ContainerBearerIssuer
      * The discriminator {@see SanctumVerifier} requires a candidate token to
      * carry: never trust request input or an unnamed PAT as a container
      * bearer.
+     *
+     * Configurable because an app that already mints container bearers under
+     * its own label cannot adopt this driver otherwise — it would reject every
+     * live bearer until a fleet-wide rotation. A package has no business
+     * dictating a string that already exists in someone's database.
      */
     public const TOKEN_NAME = 'gezel-container';
+
+    public static function tokenName(): string
+    {
+        $name = config('gezel.auth.container_token_name', self::TOKEN_NAME);
+
+        return is_string($name) && $name !== '' ? $name : self::TOKEN_NAME;
+    }
 
     public function issue(Model $owner): string
     {
@@ -31,7 +43,7 @@ final class SanctumIssuer implements ContainerBearerIssuer
         }
 
         /** @var NewAccessToken $token */
-        $token = $owner->createToken(self::TOKEN_NAME, ['*']);
+        $token = $owner->createToken(self::tokenName(), ['*']);
 
         return $token->plainTextToken;
     }
@@ -49,7 +61,7 @@ final class SanctumIssuer implements ContainerBearerIssuer
             );
         }
 
-        return $owner->tokens()->where('name', self::TOKEN_NAME)->pluck('id')->all();
+        return $owner->tokens()->where('name', self::tokenName())->pluck('id')->all();
     }
 
     /**

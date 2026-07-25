@@ -32,6 +32,7 @@ return [
     ],
     'auth' => [
         'driver' => env('GEZEL_AUTH_DRIVER', 'sanctum'),  // 'sanctum' | 'passport' | a ContainerBearerIssuer+PrincipalVerifier binding class-string
+        'container_token_name' => env('GEZEL_CONTAINER_TOKEN_NAME', 'gezel-container'),  // the label the sanctum driver mints and requires; change only to match bearers an app already issued under another name
     ],
     'mcp' => [
         'server' => null,  // class-string<GezelMcpServer> the host app extends; null registers no route
