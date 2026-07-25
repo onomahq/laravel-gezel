@@ -150,7 +150,13 @@ class GezelClient
             ->withHeaders($this->traceHeaders());
     }
 
-    protected function proxyBaseUrl(string $gezelId): string
+    /**
+     * The middleware's per-owner proxy root. Public because a caller that
+     * streams cannot go through this client at all — an SSE turn needs the URL
+     * to hand to its own long-lived HTTP client — and rebuilding it caller-side
+     * duplicates a path shape only the middleware contract gets to define.
+     */
+    public function proxyBaseUrl(string $gezelId): string
     {
         return rtrim((string) config('gezel.middleware.url'), '/').'/v1/proxy/'.rawurlencode($gezelId);
     }
