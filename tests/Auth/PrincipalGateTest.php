@@ -73,8 +73,8 @@ it('rejects a token whose tokenable is not an instance of the configured owner m
     // The scenario a driver alone can't rule out: a token resolved from its
     // own tokenable record, where that record is real and even carries a
     // gezel_id, but belongs to some other Authenticatable than the one
-    // gezel.owner.model configures (e.g. a Team's token when owner.model is
-    // User).
+    // gezel.owner.model configures — an admin, a staff account, any second
+    // authenticatable the app happens to issue tokens to.
     config()->set('gezel.owner.model', GezelUser::class);
 
     $wrongModelOwner = new GezelTeam(['id' => 1, 'gezel_id' => 'a-real-looking-gezel-id']);

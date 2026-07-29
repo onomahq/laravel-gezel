@@ -37,14 +37,12 @@ class Owner
             throw new RuntimeException("gezel.owner.model [{$model}] must be an Eloquent model implementing ".GezelOwner::class.'. Add the HasGezelAgent trait and `implements '.GezelOwner::class.'` to it.');
         }
 
-        if (is_a($model, Authenticatable::class, true)) {
-            return;
+        // An agent is personal. A model that cannot authenticate stands for a
+        // group, and one container per group means one agent memory read by
+        // every member of it — so the owner must be an individual, with no way
+        // to opt out.
+        if (! is_a($model, Authenticatable::class, true)) {
+            throw new RuntimeException("gezel.owner.model [{$model}] cannot authenticate, so it stands for a group rather than a person, and every member would share one container and one agent memory. A Gezel agent is always personal: point gezel.owner.model at the model your users log in as.");
         }
-
-        if (config('gezel.owner.acknowledges_shared_memory') === true) {
-            return;
-        }
-
-        throw new RuntimeException("gezel.owner.model [{$model}] cannot authenticate, so every member of it would share one container and one agent memory; set gezel.owner.acknowledges_shared_memory = true in config/gezel.php to confirm you intend this.");
     }
 }

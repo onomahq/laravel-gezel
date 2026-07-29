@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\Route;
  * it; re-running the file is the only way to see what a given config actually
  * registers.
  */
-function gezelRouteNames(bool $turnContextEnabled): array
+function gezelRouteNames(bool $turnContextEnabled, array $overrides = []): array
 {
     config()->set('gezel.turn_context.enabled', $turnContextEnabled);
+
+    foreach ($overrides as $key => $value) {
+        config()->set($key, $value);
+    }
 
     $router = new Router(app('events'), app());
     $original = Route::getFacadeRoot();
@@ -34,11 +38,39 @@ it('registers turn-context once the app opts in', function () {
     expect(gezelRouteNames(true))->toContain('gezel.turn-context');
 });
 
-it('always registers the routes that are not opt-in', function () {
+it('registers the callback routes by default, so mounting the package is enough', function () {
     expect(gezelRouteNames(false))
         ->toContain('gezel.agent-messages')
         ->toContain('gezel.principals.verify')
         ->toContain('gezel.usage');
+});
+
+/**
+ * A host app that serves one of these paths itself shadows the package's route
+ * silently, since Laravel keys on method+URI and app routes load last. Deleting
+ * the host's route then activates the package's underneath rather than leaving a
+ * 404 — a different response shape and different auth, with nothing failing. The
+ * host opts out instead, so the deletion produces the 404 it should.
+ */
+it('drops agent-messages when the host app serves that path itself', function () {
+    expect(gezelRouteNames(false, ['gezel.routes.agent_messages' => false]))
+        ->not->toContain('gezel.agent-messages')
+        ->toContain('gezel.principals.verify')
+        ->toContain('gezel.usage');
+});
+
+it('drops principals/verify when the host app serves that path itself', function () {
+    expect(gezelRouteNames(false, ['gezel.routes.principals_verify' => false]))
+        ->not->toContain('gezel.principals.verify')
+        ->toContain('gezel.agent-messages')
+        ->toContain('gezel.usage');
+});
+
+it('keeps the usage route even with both opt-outs, because a 404 dead-letters billing data', function () {
+    expect(gezelRouteNames(false, [
+        'gezel.routes.agent_messages' => false,
+        'gezel.routes.principals_verify' => false,
+    ]))->toContain('gezel.usage');
 });
 
 it('registers the usage route even with usage disabled, so callbacks never 404 into the dead-letter queue', function () {

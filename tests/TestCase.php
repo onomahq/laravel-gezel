@@ -41,7 +41,6 @@ class TestCase extends Orchestra
         // package boots cleanly; tests override gezel.owner.* as needed.
         config()->set('gezel.owner', [
             'model' => GezelUser::class,
-            'acknowledges_shared_memory' => false,
         ]);
 
         // Routes register once at boot, so the turn-context route (which is

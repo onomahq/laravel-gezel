@@ -30,10 +30,12 @@ Route::prefix(config('gezel.routes.prefix'))
     ->middleware(config('gezel.routes.middleware', []))
     ->name('gezel.')
     ->group(function () {
-        Route::post('/agent-messages', AgentMessagesController::class)
-            ->middleware([AuthenticateGezelContainerPrincipal::class, 'throttle:gezel-internal'])
-            ->withoutMiddleware('throttle:api')
-            ->name('agent-messages');
+        if (config('gezel.routes.agent_messages', true)) {
+            Route::post('/agent-messages', AgentMessagesController::class)
+                ->middleware([AuthenticateGezelContainerPrincipal::class, 'throttle:gezel-internal'])
+                ->withoutMiddleware('throttle:api')
+                ->name('agent-messages');
+        }
 
         // gezel-verify, not gezel-internal: resolving a principal is this
         // endpoint's whole job, so it never has one to key on, and every
@@ -41,10 +43,12 @@ Route::prefix(config('gezel.routes.prefix'))
         // verification for every container at once rather than per caller.
         // The IP ceiling is the limit that makes sense here; the service token
         // is the actual gate.
-        Route::post('/principals/verify', PrincipalsVerifyController::class)
-            ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-verify'])
-            ->withoutMiddleware('throttle:api')
-            ->name('principals.verify');
+        if (config('gezel.routes.principals_verify', true)) {
+            Route::post('/principals/verify', PrincipalsVerifyController::class)
+                ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-verify'])
+                ->withoutMiddleware('throttle:api')
+                ->name('principals.verify');
+        }
 
         if (config('gezel.turn_context.enabled', false)) {
             Route::post('/turn-context', TurnContextController::class)

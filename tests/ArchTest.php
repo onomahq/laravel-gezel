@@ -9,8 +9,8 @@ arch('it will not use debugging functions')
  * attributes. Binding that principal to an authenticated user is the host
  * app's call, never the package's: Onoma's tenancy (the BelongsToCurrentUser
  * global scope, OwnedByUserPolicy) keys on Auth::user(), and a package that
- * bound it would be deciding an app's tenancy model from the outside.
- * Stagent's owner is a Team, which cannot authenticate at all.
+ * bound it would be deciding an app's tenancy model from the outside. Stagent
+ * resolves its own owner through Passport and binds nothing.
  *
  * A test rather than a docblock because the failure is silent: an
  * Auth::setUser() added here would work fine in Onoma and quietly cross

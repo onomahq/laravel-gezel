@@ -6,7 +6,6 @@ it('ships the contract values the middleware relies on', function () {
     expect($config['middleware']['url'])->toBe('http://localhost:8800');
     expect($config['timeout'])->toBe(120);
     expect($config['routes']['prefix'])->toBe('api/v1/internal');
-    expect($config['owner']['acknowledges_shared_memory'])->toBeFalse();
     expect($config['provisioning']['strategy'])->toBe('opt-in');
     expect($config['provisioning']['self_heal'])->toBeFalse();
 });

@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Laravel\Passport\HasApiTokens;
 use Laravel\Passport\PersonalAccessTokenResult;
 use Onomahq\Gezel\Contracts\ContainerBearerIssuer;
+use Onomahq\Gezel\Support\Owner;
 use RuntimeException;
 
 /**
  * Mints a container bearer as a Passport OAuth token named 'gezel-mcp',
- * Stagent's existing convention. Passport is user-bound: the owner model
- * must be {@see Authenticatable} (documented limitation vs. the Sanctum
- * driver, which also works on Team-like owners).
+ * Stagent's existing convention. Passport is user-bound, which the owner
+ * model already satisfies: {@see Owner} requires an
+ * {@see Authenticatable}.
  */
 final class PassportIssuer implements ContainerBearerIssuer
 {

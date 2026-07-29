@@ -42,6 +42,17 @@ class GezelHealth extends Command
             return self::FAILURE;
         }
 
+        // The inbound secret has no other check. app_token proves itself by
+        // being used on every outbound call, so a wrong one fails loudly and
+        // immediately; service_token is only ever presented by the middleware
+        // calling in, so a blank one looks perfectly healthy from here and
+        // refuses every callback in production.
+        if (blank(config('gezel.middleware.service_token'))) {
+            $this->error('gezel.middleware.service_token is not configured. Every inbound callback from the middleware will be refused. Set GEZEL_SERVICE_TOKEN to this app\'s [apps.application].token.');
+
+            return self::FAILURE;
+        }
+
         // The middleware POSTs usage callbacks to the literal path
         // /api/v1/internal/usage; a moved prefix means every metering event
         // 404s and dead-letters permanently. Fail here, at deploy time, not

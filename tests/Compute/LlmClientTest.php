@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Onomahq\Gezel\Compute\LlmClient;
 use Onomahq\Gezel\Contracts\ComputeUsageRecorder;
 use Onomahq\Gezel\Exceptions\UsageCapExceededException;
@@ -50,6 +51,47 @@ it('relays a completion through the middleware and returns the assistant content
     Http::assertSent(fn (Request $r): bool => $r->url() === 'http://middleware.test/v1/chat/completions'
         && $r->hasHeader('Authorization', 'Bearer app-token')
         && $r['stream'] === false);
+});
+
+/**
+ * The fail-open is deliberate, the silence is not. An owner with no gezel_id
+ * still gets its call relayed, uncapped and unbilled, with every test green —
+ * so the only signal that the ledger is short is this log line.
+ */
+it('warns when an owner cannot be metered, rather than dropping the headers quietly', function () {
+    Log::spy();
+
+    Http::fake(['*' => Http::response([
+        'model' => 'gpt-4o-mini',
+        'choices' => [['message' => ['content' => 'ok']]],
+        'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1],
+    ])]);
+
+    $owner = GezelUser::query()->create(['name' => 'Unprovisioned']);
+
+    app(LlmClient::class)->chat('gpt-4o-mini', [['role' => 'user', 'content' => 'hi']], [], $owner);
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message): bool => str_contains($message, 'unmetered'))
+        ->once();
+
+    Http::assertSent(fn (Request $r): bool => ! $r->hasHeader('X-Usage-User-Id'));
+
+    expect($this->recorded)->toBeEmpty();
+});
+
+it('stays quiet when no owner was passed at all, since nothing was promised', function () {
+    Log::spy();
+
+    Http::fake(['*' => Http::response([
+        'model' => 'gpt-4o-mini',
+        'choices' => [['message' => ['content' => 'ok']]],
+        'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1],
+    ])]);
+
+    app(LlmClient::class)->chat('gpt-4o-mini', [['role' => 'user', 'content' => 'hi']]);
+
+    Log::shouldNotHaveReceived('warning');
 });
 
 it('meters the call against the owner gezel_id, not its primary key', function () {

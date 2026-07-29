@@ -10,8 +10,7 @@ use RuntimeException;
 
 /**
  * Mints a container bearer as a Sanctum personal access token. Works on any
- * owner model using {@see HasApiTokens}, including non-User owners (Team),
- * unlike the Passport driver.
+ * owner model using {@see HasApiTokens}, whatever that app calls its people.
  */
 final class SanctumIssuer implements ContainerBearerIssuer
 {

@@ -5,6 +5,7 @@ namespace Onomahq\Gezel\Compute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Onomahq\Gezel\Contracts\GezelOwner;
 use RuntimeException;
 
@@ -38,10 +39,23 @@ abstract class MiddlewareComputeClient
         $gezelId = $this->gezelId($owner);
 
         if ($gezelId !== null) {
-            $http = $http->withHeaders([
+            return $http->withHeaders([
                 'X-Usage-User-Id' => $gezelId,
                 'X-Usage-Source' => $source,
                 'X-Usage-Phase' => $phase,
+            ]);
+        }
+
+        // The fail-open below is deliberate, the silence is not. A caller that
+        // passed an owner asked for a metered call and is not getting one: the
+        // call still runs, bills nothing, counts against no cap, and every test
+        // stays green. Warn here rather than in gezelId(), which recordUsage()
+        // also calls — one line per dropped call, not two.
+        if ($owner !== null) {
+            Log::warning('Gezel compute call is unmetered: the owner has no gezel_id, so the middleware cannot meter or cap it.', [
+                'owner_model' => $owner::class,
+                'owner_key' => $owner instanceof Model ? $owner->getKey() : null,
+                'phase' => $phase,
             ]);
         }
 
@@ -51,7 +65,8 @@ abstract class MiddlewareComputeClient
     /**
      * Null for an owner that has no gezel_id yet: it was never provisioned, so
      * the middleware has nothing to meter the call against. Better unmetered
-     * than metered to an id the middleware has never seen.
+     * than metered to an id the middleware has never seen. A pure read —
+     * request() warns on the null, once per call.
      */
     protected function gezelId(?GezelOwner $owner): ?string
     {

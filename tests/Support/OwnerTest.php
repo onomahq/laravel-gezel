@@ -32,25 +32,27 @@ it('returns null when no owner matches the gezel_id', function () {
     expect(Owner::findByGezelId((string) Str::uuid()))->toBeNull();
 });
 
-it('resolves an authenticatable owner without acknowledgement', function () {
+it('resolves an authenticatable owner', function () {
     config()->set('gezel.owner.model', GezelUser::class);
-    config()->set('gezel.owner.acknowledges_shared_memory', false);
 
     expect(Owner::model())->toBe(GezelUser::class);
 });
 
-it('refuses a non-authenticatable owner that has not acknowledged shared memory', function () {
+/**
+ * An agent is personal, so this refusal has no escape hatch: a model standing
+ * for a group would put one agent memory in front of every member of it.
+ */
+it('refuses a non-authenticatable owner', function () {
     config()->set('gezel.owner.model', GezelTeam::class);
-    config()->set('gezel.owner.acknowledges_shared_memory', false);
 
-    expect(fn () => Owner::model())->toThrow(RuntimeException::class, 'acknowledges_shared_memory');
+    expect(fn () => Owner::model())->toThrow(RuntimeException::class, 'always personal');
 });
 
-it('resolves a non-authenticatable owner once shared memory is acknowledged', function () {
+it('cannot be talked into a non-authenticatable owner by config', function () {
     config()->set('gezel.owner.model', GezelTeam::class);
     config()->set('gezel.owner.acknowledges_shared_memory', true);
 
-    expect(Owner::model())->toBe(GezelTeam::class);
+    expect(fn () => Owner::model())->toThrow(RuntimeException::class, 'always personal');
 });
 
 it('reports a missing owner model class distinctly from the shared memory guard', function () {
