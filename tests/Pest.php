@@ -4,9 +4,26 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Passport\ClientRepository;
+use Onomahq\Gezel\Contracts\TurnContextProvider;
+use Onomahq\Gezel\Tests\Fixtures\WiredTurnContextProvider;
 use Onomahq\Gezel\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);
+
+/**
+ * Binds a host app's own TurnContextProvider and re-runs routes/gezel.php
+ * against the live router, which is what it takes to exercise the turn-context
+ * endpoint: it registers at boot, and only for an app that bound a provider of
+ * its own, so no test body can be early enough on its own. Re-registering is
+ * idempotent — the router keys on method+URI, so the second pass replaces the
+ * first rather than stacking.
+ */
+function wireTurnContextRoute(): void
+{
+    app()->bind(TurnContextProvider::class, WiredTurnContextProvider::class);
+
+    require __DIR__.'/../routes/gezel.php';
+}
 
 /**
  * Creates a minimal users table, points gezel.owner.model at it, then runs

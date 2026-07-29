@@ -1,7 +1,22 @@
 <?php
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use Onomahq\Gezel\Contracts\TurnContextProvider;
+use Onomahq\Gezel\Support\Viewing;
+
+/** Stands in for a host app's own composer. */
+function bindTurnContextProvider(): void
+{
+    app()->instance(TurnContextProvider::class, new class implements TurnContextProvider
+    {
+        public function compose(Model $owner, ?Viewing $viewing = null): ?string
+        {
+            return 'grounding';
+        }
+    });
+}
 
 /**
  * Registers routes/gezel.php against a throwaway Router. The booted app has
@@ -34,8 +49,26 @@ it('does not register the turn-context route by default, because it is opt-in', 
     expect(gezelRouteNames(false))->not->toContain('gezel.turn-context');
 });
 
-it('registers turn-context once the app opts in', function () {
+it('registers turn-context once the app opts in and binds a provider', function () {
+    bindTurnContextProvider();
+
     expect(gezelRouteNames(true))->toContain('gezel.turn-context');
+});
+
+/**
+ * The flag on its own leaves the null default in place, and a route standing on
+ * that answers {turn_context: null} to every relayed turn. The middleware relays
+ * the turn anyway — grounding is optional by contract — so the miswiring never
+ * surfaces. Dropping the route turns it into the 404 the caller already handles.
+ */
+it('withholds turn-context when only the null default is bound, so a miswired app 404s instead of composing nothing', function () {
+    expect(gezelRouteNames(true))->not->toContain('gezel.turn-context');
+});
+
+it('withholds turn-context when the flag is off, even with a provider bound', function () {
+    bindTurnContextProvider();
+
+    expect(gezelRouteNames(false))->not->toContain('gezel.turn-context');
 });
 
 it('registers the callback routes by default, so mounting the package is enough', function () {

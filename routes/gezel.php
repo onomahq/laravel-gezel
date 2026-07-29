@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Onomahq\Gezel\GezelServiceProvider;
 use Onomahq\Gezel\Http\Controllers\AgentMessagesController;
 use Onomahq\Gezel\Http\Controllers\PrincipalsVerifyController;
 use Onomahq\Gezel\Http\Controllers\TurnContextController;
@@ -50,7 +51,14 @@ Route::prefix(config('gezel.routes.prefix'))
                 ->name('principals.verify');
         }
 
-        if (config('gezel.turn_context.enabled', false)) {
+        // The flag alone would not be enough: enabling it without binding a
+        // TurnContextProvider leaves the package's own null default in place,
+        // which answers {turn_context: null} forever. The middleware treats
+        // that as "no grounding" and relays the turn anyway — grounding is
+        // optional by contract — so every relayed turn quietly loses its
+        // grounding and nothing errors anywhere. No provider, no route, and
+        // the middleware gets the 404 it already handles.
+        if (GezelServiceProvider::servesTurnContext()) {
             Route::post('/turn-context', TurnContextController::class)
                 ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-internal'])
                 ->withoutMiddleware('throttle:api')

@@ -63,6 +63,23 @@ Verify before you trust it:
 php artisan gezel:health
 ```
 
+## Callback routes
+
+The middleware calls back into this app under `gezel.routes.prefix`. `agent-messages` and
+`principals/verify` register by default and can be turned off per route
+(`gezel.routes.agent_messages`, `gezel.routes.principals_verify`) by an app that serves those
+paths itself. `usage` always registers: the middleware POSTs its ledger to a hardcoded path and
+dead-letters permanently on a 404.
+
+`turn-context` takes two things: `gezel.turn_context.enabled` and a `TurnContextProvider` bound by
+the app. The flag alone leaves the package's null default in place, which composes nothing for
+every relayed turn while the endpoint keeps answering 200 — grounding is optional by contract, so
+the middleware relays anyway and the miswiring never surfaces. Without a binding there is no
+route, and the middleware gets a 404 it already handles.
+
+Bind it in a service provider's `register()`. Routes load from this package's `boot()`, so a
+binding made in a host provider's `boot()` can land after the route has already been decided.
+
 ## Testing
 
 ```bash

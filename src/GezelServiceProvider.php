@@ -4,6 +4,7 @@ namespace Onomahq\Gezel;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -96,6 +97,50 @@ class GezelServiceProvider extends PackageServiceProvider
         $this->app->bindIf(TurnContextProvider::class, NullTurnContextProvider::class);
         $this->app->bindIf(OwnerMembershipVerifier::class, AlwaysAllowMembershipVerifier::class);
         $this->app->bindIf(TargetOwnershipVerifier::class, DeniesUnverifiableTargets::class);
+    }
+
+    /**
+     * Whether the turn-context callback is worth serving: the host opted in
+     * *and* bound a TurnContextProvider of its own. The package's own null
+     * default composes nothing, so a route standing on it answers
+     * {turn_context: null} to every relayed turn, which the middleware
+     * accepts as "no grounding" rather than reporting.
+     *
+     * Lives here, not in routes/gezel.php, because it reads the container:
+     * routes load from this provider's boot(), so every provider's register()
+     * has already run and a host binding made there is visible. Bind in
+     * register(), not boot() — a boot()-time binding can land after this file
+     * has already decided.
+     *
+     * Resolving is the only way to tell the null default from a real
+     * implementation; the container hands back a closure for either. It costs
+     * one construction per boot, on a collector the turn-context request would
+     * construct anyway.
+     */
+    public static function servesTurnContext(): bool
+    {
+        if (! config('gezel.turn_context.enabled', false)) {
+            return false;
+        }
+
+        $app = Container::getInstance();
+
+        if (! $app->bound(TurnContextProvider::class)) {
+            return false;
+        }
+
+        return self::composesSomething($app->make(TurnContextProvider::class));
+    }
+
+    /**
+     * Takes the provider as a parameter typed to the contract so the check is
+     * made against the contract. Inlined, static analysis resolves the
+     * container to the binding present while it runs — the null default, since
+     * nothing bound over it — and folds the whole method to `false`.
+     */
+    private static function composesSomething(TurnContextProvider $provider): bool
+    {
+        return ! $provider instanceof NullTurnContextProvider;
     }
 
     public function packageBooted(): void
