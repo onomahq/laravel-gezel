@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Onomahq\Gezel\GezelServiceProvider;
 use Onomahq\Gezel\Http\Controllers\AgentMessagesController;
 use Onomahq\Gezel\Http\Controllers\PrincipalsVerifyController;
 use Onomahq\Gezel\Http\Controllers\TurnContextController;
@@ -30,10 +31,12 @@ Route::prefix(config('gezel.routes.prefix'))
     ->middleware(config('gezel.routes.middleware', []))
     ->name('gezel.')
     ->group(function () {
-        Route::post('/agent-messages', AgentMessagesController::class)
-            ->middleware([AuthenticateGezelContainerPrincipal::class, 'throttle:gezel-internal'])
-            ->withoutMiddleware('throttle:api')
-            ->name('agent-messages');
+        if (config('gezel.routes.agent_messages', true)) {
+            Route::post('/agent-messages', AgentMessagesController::class)
+                ->middleware([AuthenticateGezelContainerPrincipal::class, 'throttle:gezel-internal'])
+                ->withoutMiddleware('throttle:api')
+                ->name('agent-messages');
+        }
 
         // gezel-verify, not gezel-internal: resolving a principal is this
         // endpoint's whole job, so it never has one to key on, and every
@@ -41,12 +44,21 @@ Route::prefix(config('gezel.routes.prefix'))
         // verification for every container at once rather than per caller.
         // The IP ceiling is the limit that makes sense here; the service token
         // is the actual gate.
-        Route::post('/principals/verify', PrincipalsVerifyController::class)
-            ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-verify'])
-            ->withoutMiddleware('throttle:api')
-            ->name('principals.verify');
+        if (config('gezel.routes.principals_verify', true)) {
+            Route::post('/principals/verify', PrincipalsVerifyController::class)
+                ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-verify'])
+                ->withoutMiddleware('throttle:api')
+                ->name('principals.verify');
+        }
 
-        if (config('gezel.turn_context.enabled', false)) {
+        // The flag alone would not be enough: enabling it without binding a
+        // TurnContextProvider leaves the package's own null default in place,
+        // which answers {turn_context: null} forever. The middleware treats
+        // that as "no grounding" and relays the turn anyway — grounding is
+        // optional by contract — so every relayed turn quietly loses its
+        // grounding and nothing errors anywhere. No provider, no route, and
+        // the middleware gets the 404 it already handles.
+        if (GezelServiceProvider::servesTurnContext()) {
             Route::post('/turn-context', TurnContextController::class)
                 ->middleware([VerifyGezelServiceToken::class, 'throttle:gezel-internal'])
                 ->withoutMiddleware('throttle:api')

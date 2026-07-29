@@ -25,18 +25,27 @@ return [
     'routes' => [
         'prefix' => 'api/v1/internal',
         'middleware' => ['api'],
+        // Per-callback registration. On by default: an app that mounts this
+        // package gets the callbacks it came for. Turn one off when the host
+        // app serves that path itself. Laravel keys its route collection on
+        // method+URI and the host's routes load last, so a host route at the
+        // same URI shadows the package's silently — and deleting the host's
+        // then activates the package's underneath, with a different response
+        // shape and different auth, rather than leaving a 404.
+        'agent_messages' => env('GEZEL_ROUTE_AGENT_MESSAGES', true),
+        'principals_verify' => env('GEZEL_ROUTE_PRINCIPALS_VERIFY', true),
     ],
     'owner' => [
-        'model' => User::class,  // any Eloquent model: User, Team, ...
-        'acknowledges_shared_memory' => env('GEZEL_OWNER_ACKNOWLEDGES_SHARED_MEMORY', false),  // required true when owner.model cannot authenticate
+        'model' => User::class,  // the model your users log in as; must be Authenticatable, because an agent is always personal
     ],
     'auth' => [
         'driver' => env('GEZEL_AUTH_DRIVER', 'sanctum'),  // 'sanctum' | 'passport' | a ContainerBearerIssuer+PrincipalVerifier binding class-string
+        'container_token_name' => env('GEZEL_CONTAINER_TOKEN_NAME', 'gezel-container'),  // the label the sanctum driver mints and requires; change only to match bearers an app already issued under another name
     ],
     'mcp' => [
         'server' => null,  // class-string<GezelMcpServer> the host app extends; null registers no route
         'path' => env('GEZEL_MCP_PATH', '/mcp'),
-        'middleware' => ['auth:sanctum'],  // matches the 'sanctum' auth.driver default above; change together if you switch drivers
+        'middleware' => ['auth:sanctum'],  // guards the interactive /mcp route for humans; independent of auth.driver, which governs machine container bearers
     ],
     'turn_context' => [
         'enabled' => env('GEZEL_TURN_CONTEXT_ENABLED', false),  // opt-in: registers POST {routes.prefix}/turn-context

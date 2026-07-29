@@ -9,6 +9,7 @@ use Onomahq\Gezel\Tests\Fixtures\GezelUser;
 beforeEach(function () {
     migrateGezelOwnerTable(GezelUser::class);
     config()->set('gezel.middleware.service_token', 'the-service-token');
+    wireTurnContextRoute();
 });
 
 afterEach(function () {
@@ -37,7 +38,7 @@ it('refuses an unknown owner with the standard body, not a distinguishable turn_
         ->assertExactJson($badToken->json());
 });
 
-it('resolves the owner by gezel_id and calls the bound TurnContextProvider, whose default answers null', function () {
+it('resolves the owner by gezel_id and answers with whatever the bound TurnContextProvider composed', function () {
     $owner = GezelUser::create(['name' => 'Ada']);
     $owner->ensureGezelId();
 

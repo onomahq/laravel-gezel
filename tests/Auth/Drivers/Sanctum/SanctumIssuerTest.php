@@ -69,3 +69,37 @@ it('does nothing when revoking an empty list of ids', function () {
 
     expect(PersonalAccessToken::findToken($token))->not->toBeNull();
 });
+
+// An app that already mints container bearers under its own label cannot adopt
+// this driver otherwise: every live bearer would fail verification until a
+// fleet-wide rotation. The package has no business dictating a string that
+// already exists in someone's database.
+it('mints under a configured token name', function () {
+    config()->set('gezel.auth.container_token_name', 'onoma-container-bearer');
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+
+    (new SanctumIssuer)->issue($owner);
+
+    expect($owner->tokens()->first()->name)->toBe('onoma-container-bearer');
+});
+
+it('falls back to the default when the configured name is blank', function () {
+    config()->set('gezel.auth.container_token_name', '');
+
+    expect(SanctumIssuer::tokenName())->toBe(SanctumIssuer::TOKEN_NAME);
+});
+
+it('finds and revokes bearers under the configured name', function () {
+    config()->set('gezel.auth.container_token_name', 'onoma-container-bearer');
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+    $owner->ensureGezelId();
+    $issuer = new SanctumIssuer;
+    $issuer->issue($owner);
+
+    $ids = $issuer->activePrincipalIds($owner);
+    expect($ids)->toHaveCount(1);
+
+    $issuer->revoke($owner, $ids);
+    expect($owner->tokens()->count())->toBe(0);
+});

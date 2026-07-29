@@ -174,3 +174,17 @@ it('exposes generic verbs against the proxy base url', function () {
 
     expect($response->json('ok'))->toBeTrue();
 });
+
+it('exposes the per-owner proxy root for callers that stream past this client', function () {
+    config()->set('gezel.middleware.url', 'http://middleware.test/');
+
+    expect((new GezelClient)->proxyBaseUrl('gezel-1'))
+        ->toBe('http://middleware.test/v1/proxy/gezel-1');
+});
+
+it('url-encodes a gezel id so it cannot escape the proxy path', function () {
+    config()->set('gezel.middleware.url', 'http://middleware.test');
+
+    expect((new GezelClient)->proxyBaseUrl('a/../b'))
+        ->toBe('http://middleware.test/v1/proxy/a%2F..%2Fb');
+});

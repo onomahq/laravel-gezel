@@ -10,6 +10,7 @@ beforeEach(function () {
 
     config()->set('gezel.middleware.url', 'http://middleware.test');
     config()->set('gezel.middleware.app_token', 'app-token-123');
+    config()->set('gezel.middleware.service_token', 'service-token-123');
     config()->set('gezel.app_id', 'onoma');
 });
 
@@ -53,6 +54,16 @@ it('fails when gezel.app_id is not configured', function () {
     Http::fake(['middleware.test/health' => Http::response(['status' => 'ok', 'docker' => true, 'containers' => ['total' => 0], 'application' => ['configured' => true]], 200)]);
 
     $this->artisan('gezel:health')->assertExitCode(1);
+});
+
+it('fails when the inbound service token is not configured', function () {
+    config()->set('gezel.middleware.service_token', null);
+
+    Http::fake(['middleware.test/health' => Http::response(['status' => 'ok', 'docker' => true, 'containers' => ['total' => 0], 'application' => ['configured' => true]], 200)]);
+
+    $this->artisan('gezel:health')
+        ->expectsOutputToContain('GEZEL_SERVICE_TOKEN')
+        ->assertExitCode(1);
 });
 
 it('warns but succeeds when there is no provisioned owner to test against', function () {

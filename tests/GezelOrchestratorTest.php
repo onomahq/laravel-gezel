@@ -170,3 +170,31 @@ it('throws when writeConfig fails', function () {
 
     expect(fn () => (new GezelOrchestrator)->writeConfig('gezel-1', []))->toThrow(RequestException::class);
 });
+
+it('reads the authoritative usage status for a month', function () {
+    Http::fake([
+        'middleware.test/v1/containers/gezel-1/usage/status*' => Http::response([
+            'monthly_token_cap' => 6000000,
+            'tokens_used' => 12345,
+        ], 200),
+    ]);
+
+    $status = (new GezelOrchestrator)->usageStatus('gezel-1', '2026-07');
+
+    expect($status)->toBe(['monthly_token_cap' => 6000000, 'tokens_used' => 12345]);
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'month=2026-07'));
+});
+
+it('throws when usage status fails, rather than reporting zero usage', function () {
+    Http::fake(['middleware.test/*' => Http::response([], 500)]);
+
+    expect(fn () => (new GezelOrchestrator)->usageStatus('gezel-1', '2026-07'))
+        ->toThrow(RequestException::class);
+});
+
+it('raises the lifecycle-disabled exception on a usage status 501', function () {
+    Http::fake(['middleware.test/*' => Http::response([], 501)]);
+
+    expect(fn () => (new GezelOrchestrator)->usageStatus('gezel-1', '2026-07'))
+        ->toThrow(ContainerLifecycleDisabledException::class);
+});

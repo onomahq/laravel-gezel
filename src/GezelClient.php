@@ -5,6 +5,7 @@ namespace Onomahq\Gezel;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -41,8 +42,16 @@ class GezelClient
     {
         try {
             $this->request($gezelId)->post($this->sessionPath($chatId).'/activate')->throw();
-        } catch (Throwable) {
-            // Best-effort: nothing to roll back locally.
+        } catch (Throwable $e) {
+            // Best-effort: nothing to roll back locally, and the delivery target
+            // self-corrects on the next turn. Logged rather than swallowed —
+            // an exception caught without binding is unrecoverable by
+            // construction, and the next app inherits that blindness.
+            Log::warning('Gezel session activate failed', [
+                'gezel_id' => $gezelId,
+                'chat_id' => $chatId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -58,8 +67,14 @@ class GezelClient
                 ->withQueryParameters(['agent_id' => 'default'])
                 ->delete($this->sessionPath($chatId))
                 ->throw();
-        } catch (Throwable) {
-            // Best-effort: nothing to roll back locally.
+        } catch (Throwable $e) {
+            // Best-effort: the app-side chat row is the source of truth for the
+            // list, and an orphaned transcript is unreachable once it is gone.
+            Log::warning('Gezel session delete failed', [
+                'gezel_id' => $gezelId,
+                'chat_id' => $chatId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -150,7 +165,13 @@ class GezelClient
             ->withHeaders($this->traceHeaders());
     }
 
-    protected function proxyBaseUrl(string $gezelId): string
+    /**
+     * The middleware's per-owner proxy root. Public because a caller that
+     * streams cannot go through this client at all — an SSE turn needs the URL
+     * to hand to its own long-lived HTTP client — and rebuilding it caller-side
+     * duplicates a path shape only the middleware contract gets to define.
+     */
+    public function proxyBaseUrl(string $gezelId): string
     {
         return rtrim((string) config('gezel.middleware.url'), '/').'/v1/proxy/'.rawurlencode($gezelId);
     }

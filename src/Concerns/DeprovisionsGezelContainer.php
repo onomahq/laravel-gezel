@@ -10,9 +10,9 @@ use Onomahq\Gezel\GezelOrchestrator;
 /**
  * Tears down the owner's Gezel container and revokes its bearer. The package
  * never calls this automatically. Apps wire it into whichever event actually
- * ends the owner's lifetime: a `deleting` observer for a User owner, or the
- * dissolution path for a non-User owner (a Team can disband without any User
- * being deleted). No-ops when the owner was never provisioned.
+ * ends the owner's lifetime — typically a `deleting` observer, but an app that
+ * deactivates rather than deletes should call it there instead. No-ops when
+ * the owner was never provisioned.
  *
  * @phpstan-require-implements GezelOwner
  */

@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Onomahq\Gezel\Contracts\OwnerMembershipVerifier;
 
 /**
- * Ships as the default {@see OwnerMembershipVerifier}. Correct for the
- * default User owner: a container principal already scopes identity to
- * exactly one row, so there is nothing further to check. Team-like owners
- * override this binding with a real dissolution/membership check.
+ * Ships as the default {@see OwnerMembershipVerifier}. Correct wherever an
+ * owner's existence is its entitlement: the container principal already scopes
+ * identity to exactly one row, so there is nothing further to check. An app
+ * that can suspend an owner in place overrides this binding.
  */
 final class AlwaysAllowMembershipVerifier implements OwnerMembershipVerifier
 {
