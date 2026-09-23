@@ -19,10 +19,25 @@ trait HasGezelAgent
         ]);
     }
 
+    /**
+     * Mints with a conditional update and reads the winner back, so a stale
+     * instance adopts the id another copy of this owner already persisted
+     * instead of overwriting it. The sync queue restores a job's owner from
+     * the database: an id ProvisionContainer mints never reaches the
+     * dispatching instance, and saving a second one orphans the container.
+     * The read-back uses the write connection: a replica may not have the
+     * update yet.
+     */
     public function ensureGezelId(): string
     {
         if ($this->gezel_id === null) {
-            $this->forceFill(['gezel_id' => (string) Str::orderedUuid()])->save();
+            $this->newQueryWithoutScopes()
+                ->whereKey($this->getKey())
+                ->whereNull('gezel_id')
+                ->update(['gezel_id' => (string) Str::orderedUuid()]);
+
+            $this->setAttribute('gezel_id', $this->newQueryWithoutScopes()->useWritePdo()->whereKey($this->getKey())->value('gezel_id'));
+            $this->syncOriginalAttribute('gezel_id');
         }
 
         return $this->gezel_id;

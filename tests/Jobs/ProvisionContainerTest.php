@@ -54,6 +54,25 @@ it('mints a bearer, provisions, stamps gezel_provisioned_at, and pushes the usag
     });
 });
 
+it('leaves the dispatching instance on the gezel_id the container was provisioned under', function () {
+    $owner = SanctumOwner::create(['name' => 'Ada']);
+
+    $provisionedUnder = null;
+    Http::fake([
+        'middleware.test/v1/containers/*/provision' => function ($request) use (&$provisionedUnder) {
+            $provisionedUnder = str($request->url())->between('/v1/containers/', '/provision')->value();
+
+            return Http::response(['container_id' => 'c-abc', 'status' => 'provisioned']);
+        },
+        'middleware.test/v1/containers/*/config' => Http::response(['pushed' => true]),
+    ]);
+
+    ProvisionContainer::dispatchSync($owner);
+
+    expect($owner->ensureGezelId())->toBe($provisionedUnder);
+    expect($owner->fresh()->gezel_id)->toBe($provisionedUnder);
+});
+
 it('refreshes only the usage config when the owner is already provisioned', function () {
     $owner = SanctumOwner::create(['name' => 'Ada']);
     $owner->ensureGezelId();

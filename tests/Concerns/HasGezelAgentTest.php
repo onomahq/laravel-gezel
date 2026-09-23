@@ -30,6 +30,16 @@ it('returns the same gezel_id on repeated calls', function () {
     expect($user->ensureGezelId())->toBe($user->ensureGezelId());
 });
 
+it('adopts the gezel_id another instance of the same owner already persisted', function () {
+    $user = GezelUser::create(['name' => 'Ada']);
+    $stale = GezelUser::find($user->getKey());
+
+    $id = $user->ensureGezelId();
+
+    expect($stale->ensureGezelId())->toBe($id);
+    expect($user->fresh()->gezel_id)->toBe($id);
+});
+
 it('reports provisioned state from gezel_provisioned_at', function () {
     $user = GezelUser::create(['name' => 'Ada']);
 

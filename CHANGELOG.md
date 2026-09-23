@@ -2,6 +2,29 @@
 
 All notable changes to `laravel-gezel` will be documented in this file.
 
+## [0.3.1] - 2026-09-23
+
+**Fixed**
+- `ensureGezelId()` no longer overwrites a gezel_id another instance of the same owner already
+  persisted. `ProvisionContainer::dispatchSync($owner)` runs through the sync queue, which restores
+  the owner from the database, so the id the job minted never reached the caller's instance. The
+  caller's next `ensureGezelId()` minted and saved a second id with no container behind it, and
+  every later call answered 503 `container for user … is not connected`. The id is now minted with
+  a conditional update and read back.
+- Minting a gezel_id no longer fires the owner's model events and no longer persists unrelated
+  dirty attributes on the instance.
+
+**Upgrading from 0.3.0**
+An app that provisions with `ProvisionContainer::dispatchSync()` may hold owners whose stored
+gezel_id has no container: `GezelOrchestrator::healthCheck()` returns 404 for them. Re-dispatching
+does not repair them, because `gezel_provisioned_at` is set and the job only re-syncs usage config.
+Point the owner's gezel_id back at the id the middleware registered, then restart the container.
+Match each owner exactly before writing: with a principal verifier configured, the middleware logs
+`verifier/registry user mismatch principal_user=<stored id> registry_user=<registered id>` when the
+container reconnects, which pairs the two through the container's own bearer. A timestamp match
+between the `containers` table's `created_at` and `gezel_provisioned_at` only corroborates it.
+Skip any owner whose match is ambiguous: a wrong pair puts one owner's agent on another's memory.
+
 ## [0.3.0] - 2026-07-29
 
 Server-side compute lands: apps on Gezel reach the middleware's LLM, embeddings and transcription
