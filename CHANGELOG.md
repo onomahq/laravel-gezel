@@ -2,6 +2,13 @@
 
 All notable changes to `laravel-gezel` will be documented in this file.
 
+## [0.3.3] - 2026-10-02
+
+**Added**
+- `gezel.connection` (`GEZEL_CONNECTION`) names the database connection of the owner table and `gezel_usage_events`,
+  for an app that keeps the people it serves on a connection of their own. `GezelUsageEvent` and both published
+  migrations follow it; null uses the default connection.
+
 ## [0.3.2] - 2026-10-02
 
 **Changed**

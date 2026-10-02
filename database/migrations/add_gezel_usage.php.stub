@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Schema;
 // Change 'users' below if gezel.owner.model points at another table.
 return new class extends Migration
 {
+    public function getConnection(): ?string
+    {
+        return config('gezel.connection') ?? $this->connection;
+    }
+
     public function up(): void
     {
         // Guarded: an app that hand-rolled usage before this module (Onoma)

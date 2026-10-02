@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Onomahq\Gezel\Models\GezelUsageEvent;
 use Onomahq\Gezel\Tests\Fixtures\GezelUser;
@@ -93,4 +94,26 @@ it('relates back to the owner through gezel_id', function () {
 
     expect($event->owner)->not->toBeNull()
         ->and($event->owner->getKey())->toBe($owner->getKey());
+});
+
+it('keeps the owner columns and the usage ledger on the connection gezel.connection names', function () {
+    config(['database.connections.people' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => ''], 'gezel.connection' => 'people']);
+    Schema::connection('people')->create('users', function ($table) {
+        $table->id();
+        $table->string('name')->nullable();
+    });
+
+    foreach (['add_gezel_columns', 'add_gezel_usage'] as $stub) {
+        $migration = include __DIR__."/../../database/migrations/{$stub}.php.stub";
+        $previous = DB::getDefaultConnection();
+        DB::setDefaultConnection($migration->getConnection());
+        $migration->up();
+        DB::setDefaultConnection($previous);
+    }
+
+    app(UsageRecorder::class)->record(usageEvent(['event_id' => 'a1b9a3a2-1111-4222-8333-444455556666']));
+
+    expect(Schema::connection('people')->hasColumn('users', 'gezel_id'))->toBeTrue()
+        ->and(DB::connection('people')->table('gezel_usage_events')->count())->toBe(1)
+        ->and(DB::table('gezel_usage_events')->count())->toBe(0);
 });

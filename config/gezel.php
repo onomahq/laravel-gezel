@@ -5,6 +5,7 @@ use App\Models\User;
 // config for Onomahq/Gezel
 return [
     'app_id' => env('GEZEL_APP_ID'),                    // this app's [[apps]].id; asserted by gezel:health
+    'connection' => env('GEZEL_CONNECTION'),  // the database connection of the owner table and gezel_usage_events; null uses the default
     'middleware' => [
         'url' => env('GEZEL_MIDDLEWARE_URL', 'http://localhost:8800'),
         'app_token' => env('GEZEL_APP_TOKEN'),          // app → middleware ([[apps]].auth_token)

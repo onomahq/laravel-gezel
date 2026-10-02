@@ -30,6 +30,11 @@ class GezelUsageEvent extends Model
         'context' => 'array',
     ];
 
+    public function getConnectionName(): ?string
+    {
+        return config('gezel.connection') ?? parent::getConnectionName();
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(Owner::model(), 'gezel_id', 'gezel_id');
