@@ -2,6 +2,12 @@
 
 All notable changes to `laravel-gezel` will be documented in this file.
 
+## [0.3.2] - 2026-10-02
+
+**Changed**
+- `laravel/mcp` ^1.0 is supported beside ^0.8 and ^0.9. The package's MCP surface (`Server`, `Server\Tool`,
+  `Response::error()`, `shouldRegister()`) is unchanged in 1.0; the suite passes on 0.9.6 and 1.0.1.
+
 ## [0.3.1] - 2026-09-23
 
 **Fixed**
